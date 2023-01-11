@@ -665,7 +665,6 @@ salir:				;inicia etiqueta salir
 			mov [t_inicial],dx
 			mov [t_inicial+2],cx
 
-			mov cx,20
 			loopstart:
 
 				push cx
