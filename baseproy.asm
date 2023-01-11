@@ -179,7 +179,6 @@ cien 			db 		100 	;dato de valor decimal 100 para operación DIV entre 100
 sesenta 		db 		60		;dato de valor decimal 60 para operación DIV entre 60
 contador 		dw		0		;variable contador
 
-
 status 			db 		0 		;Status de juegos: 0 stop, 1 active, 2 pause
 conta 			db 		0 		;Contador auxiliar para algunas operaciones
 
@@ -531,7 +530,8 @@ salir:				;inicia etiqueta salir
 		imprime_cadena_color [titulo],finTitulo-titulo,cBlanco,bgNegro
 		call IMPRIME_TEXTOS
 		call IMPRIME_BOTONES
-		call IMPRIME_DATOS_INICIALES
+
+		call IMPRIME_DATOS_INICIALES   
 		ret
 	endp
 
@@ -655,13 +655,31 @@ salir:				;inicia etiqueta salir
 		call DATOS_INICIALES 		;inicializa variables de juego
 		call IMPRIME_SCORES
 		call DIBUJA_NEXT
-		loopstart:
-		    call crono
-				call DIBUJA_ACTUAL
-				;comparación si hay una barrera abajo
-				;salida del loop jmp salida_bucle
-		    	jmp loopstart
-		;:salida_bucle
+		push cx
+		push ax  
+		push bx
+		push dx 
+			
+			mov ah,00h
+			int 1Ah
+			mov [t_inicial],dx
+			mov [t_inicial+2],cx
+
+			mov cx,20
+			loopstart:
+
+				push cx
+			    	call crono
+			    pop cx 
+			    push cx
+			    	call DIBUJA_ACTUAL
+			    pop cx
+			    jmp loopstart
+ 		pop dx
+ 		pop bx
+		pop ax
+		pop cx
+		
 		;implementar
 		ret
 	endp
@@ -962,8 +980,8 @@ salir:				;inicia etiqueta salir
 		lea si,[pieza_rens]
 		mov al,ini_columna
 		mov ah,ini_renglon
-		add al, despla_hor
-		add ah, despla_vert
+		add al, [despla_hor]
+		add ah, [despla_vert]
 		mov [col_aux],al
 		mov [ren_aux],ah
 		mov [pieza_col],al
@@ -1081,11 +1099,9 @@ salir:				;inicia etiqueta salir
 		;Al final de la división, AH tiene el valor de los segundos (0 -59d) 
 		;y AL los minutos (>=0)
 		;Nota: ambos valores están en hexadecimal
-		
 		;Se guardan los segundos en una variable
-		mov despla_vert,ah
 
-		;mov despla_vert,al
+		mov despla_vert,ah
 		ret
 
 	crono endp
