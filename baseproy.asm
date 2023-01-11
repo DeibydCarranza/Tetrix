@@ -166,12 +166,19 @@ aux2 			db 		0
 ;Variables auxiliares para el manejo de posiciones
 col_aux 		db 		0
 ren_aux 		db 		0
+despla_vert		db 		0
+despla_hor		db 		0
 
 ;variables para manejo del reloj del sistema
+t_inicial		dw 		0,0		;guarda números de ticks inicial
 ticks 			dw		0 		;contador de ticks
 tick_ms			dw 		55 		;55 ms por cada tick del sistema, esta variable se usa para operación de MUL convertir ticks a segundos
 mil				dw		1000 	;dato de valor decimal 1000 para operación DIV entre 1000
 diez 			dw 		10
+cien 			db 		100 	;dato de valor decimal 100 para operación DIV entre 100
+sesenta 		db 		60		;dato de valor decimal 60 para operación DIV entre 60
+contador 		dw		0		;variable contador
+
 
 status 			db 		0 		;Status de juegos: 0 stop, 1 active, 2 pause
 conta 			db 		0 		;Contador auxiliar para algunas operaciones
@@ -187,6 +194,7 @@ boton_color		db 		0
 ocho			db 		8
 ;Cuando el driver del mouse no está disponible
 no_mouse		db 		'No se encuentra driver de mouse. Presione [enter] para salir$'
+
 
 ;////////////////////////////////////////////////////
 
@@ -647,7 +655,13 @@ salir:				;inicia etiqueta salir
 		call DATOS_INICIALES 		;inicializa variables de juego
 		call IMPRIME_SCORES
 		call DIBUJA_NEXT
-		call DIBUJA_ACTUAL
+		loopstart:
+		    call crono
+				call DIBUJA_ACTUAL
+				;comparación si hay una barrera abajo
+				;salida del loop jmp salida_bucle
+		    	jmp loopstart
+		;:salida_bucle
 		;implementar
 		ret
 	endp
@@ -948,6 +962,8 @@ salir:				;inicia etiqueta salir
 		lea si,[pieza_rens]
 		mov al,ini_columna
 		mov ah,ini_renglon
+		add al, despla_hor
+		add ah, despla_vert
 		mov [col_aux],al
 		mov [ren_aux],ah
 		mov [pieza_col],al
@@ -1022,6 +1038,57 @@ salir:				;inicia etiqueta salir
 		;implementar
 		ret
 	endp
+	crono proc
+		;Se vuelve a leer el contador de ticks
+		;Se lee para saber cuántos ticks pasaron entre la lectura inicial y ésta
+		;De esa forma, se obtiene la diferencia de ticks
+		;por cada incremento en el contador de ticks, transcurrieron 55 ms
+		mov ah,00h
+		int 1Ah
+
+		;Se recupera el valor de los ticks iniciales para poder hacer la diferencia entre
+		;el valor inicial y el último recuperado
+		mov ax,[t_inicial]		;AX = parte baja de t_inicial
+		mov bx,[t_inicial+2]	;BX = parte alta de t_inicial
+		
+		;Se hace la resta de los valores para obtener la diferencia
+		sub dx,ax  				;DX = DX - AX = t_final - t_inicial, DX guarda la parte baja del contador de ticks
+		sbb cx,bx 				;CX = CX - BX - C = t_final - t_inicial - C, CX guarda la parte alta del contador de ticks y se resta el acarreo si hubo en la resta anterior
+
+		;Se asume que el valor de CX es cronómetro
+		;Significaría que la diferencia de ticks no es mayor a 65535d
+		;Si la diferencia está entre 0d y 65535d, significa que hay un máximo de 65535 * 55ms =  3,604,425 milisegundos
+		mov ax,dx
+
+		;Se multiplica la diferencia de ticks por 55ms para obtener 
+		;la diferencia en milisegundos
+		mul [tick_ms]
+
+		;El valor anterior se divide entre 1000 para calcular la cantidad de segundos 
+		;y la cantidad de milisegundos del cronómetro (0d - 999d)
+		div [mil]
+
+		;Después de esta división, el cociente AX guarda el valor de segundos
+		;el residuo DX tiene la cantidad de milisegundos del cronómetro (0- 999d)
+
+		;Se guardan los milisegundos en una variable
+		;Nota: este valor se guarda en hexadecimal
+		;mov [milisegundos],dx
+
+		;El valor de AX de la división anterior se divide entre 60
+		;Segundos a minutos
+		div [sesenta]
+		;Al final de la división, AH tiene el valor de los segundos (0 -59d) 
+		;y AL los minutos (>=0)
+		;Nota: ambos valores están en hexadecimal
+		
+		;Se guardan los segundos en una variable
+		mov despla_vert,ah
+
+		;mov despla_vert,al
+		ret
+
+	crono endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;FIN PROCEDIMIENTOS;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
