@@ -179,6 +179,9 @@ diez 			dw 		10
 cien 			db 		100 	;dato de valor decimal 100 para operación DIV entre 100
 sesenta 		db 		60		;dato de valor decimal 60 para operación DIV entre 60
 contador 		dw		0		;variable contador
+segundos 		db 		0 		;Variable para ver los segundos
+delay_def		db 		1 		;Cada segundo se muestra la siguiente pieza
+delay_fin		db 		0 		;Para comparar el delay inicial (por si es igual)
 
 status 			db 		0 		;Status de juegos: 0 stop, 1 active, 2 pause
 conta 			db 		0 		;Contador auxiliar para algunas operaciones
@@ -664,23 +667,28 @@ salir:				;inicia etiqueta salir
 		push bx
 		push dx 
 			
-			mov ah,00h
+			mov ah,00h 				;Tomando un tiempo inicial de referencia
 			int 1Ah
 			mov [t_inicial],dx
 			mov [t_inicial+2],cx
 
-			loopstart:
+			loopstart:						;loop que contiene las funcionalidades principales del movimiento
 				call USO_MOUSE
-				push cx
-			    	call crono
-			    pop cx 
-
-				call Desplazamiento_horizontal
-
+				
+				
+			    call Desplazamiento_horizontal		;se habilitan los movimientos horizontales
 			    push cx
-			    	call DIBUJA_ACTUAL
+			    	call crono 					;Llamada al uso de los ticks
 			    pop cx
-
+			    push cx
+			    	call DIBUJA_ACTUAL				
+			    pop cx
+			    call delay
+			    push cx
+			    	call BORRA_PIEZA_ACTUAL		;borra la pieza anterior a la actual
+			    pop cx
+			    
+			    
 			    jmp loopstart
  		pop dx
  		pop bx
@@ -1047,9 +1055,214 @@ salir:				;inicia etiqueta salir
 	endp
 
 	BORRA_PIEZA_ACTUAL proc
-		;Implementar
+		lea di,[pieza_cols]
+		lea si,[pieza_rens]
+		mov al,ini_columna
+		mov ah,ini_renglon
+		add al, [despla_hor]
+		add ah, [despla_vert]
+		mov [col_aux],al
+		mov [ren_aux],ah
+		mov [pieza_col],al
+		mov [pieza_ren],ah
+		cmp [pieza_actual],cuadro
+		je borra_actual_cuadro
+		cmp [pieza_actual],linea
+		je borra_actual_linea
+		cmp [pieza_actual],lnormal
+		je borra_actual_l
+		cmp [pieza_actual],linvertida
+		je borra_actual_l_invertida
+		cmp [pieza_actual],tnormal
+		je borra_actual_t
+		cmp [pieza_actual],snormal
+		je borra_actual_s
+		cmp [pieza_actual],sinvertida
+		je borra_actual_s_invertida
+	borra_actual_cuadro:
+		mov [actual_color],cNegro
+		call BORRA_CUADRO
+		jmp salir_borra_actual
+	borra_actual_linea:
+		mov [actual_color],cNegro
+		call BORRA_LINEA
+		jmp salir_borra_actual
+	borra_actual_l:
+		mov [actual_color],cNegro
+		call BORRA_L
+		jmp salir_borra_actual
+	borra_actual_t:
+		mov [actual_color],cNegro
+		call BORRA_T
+		jmp salir_borra_actual
+	borra_actual_s:
+		;mov [actual_color],cNegro
+		call BORRA_S
+		jmp salir_borra_actual
+	borra_actual_s_invertida:
+		mov [actual_color],cNegro
+		call BORRA_S_INVERTIDA
+		jmp salir_borra_actual
+	borra_actual_l_invertida:
+		mov [actual_color],cNegro
+		call BORRA_L_INVERTIDA
+		jmp salir_borra_actual
+	salir_borra_actual:
 		ret
 	endp
+
+
+	;Procedimiento para borrar una pieza de cuadro
+	BORRA_CUADRO proc
+		mov [pieza_color],cAmarillo
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		dec al
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para BORRAr una pieza de línea
+	BORRA_LINEA proc
+		mov [pieza_color],cCyanClaro
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para BORRAr una pieza de L
+	BORRA_L proc
+		mov [pieza_color],cCafe
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		dec al
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para BORRAr una pieza de L invertida
+	BORRA_L_INVERTIDA proc
+		mov [pieza_color],cAzul
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para BORRAr una pieza de T
+	BORRA_T proc
+		mov [pieza_color],cMagenta
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc al
+		mov [si+2],al
+		mov [di+2],ah
+		dec al
+		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para BORRAr una pieza de S
+	BORRA_S proc
+		mov [pieza_color],cNegro
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		add al,2
+		mov [si],al
+		mov [di],ah
+		inc ah
+		mov [si+1],al
+		mov [di+1],ah
+		dec al
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para BORRAr una pieza de S invertida
+	BORRA_S_INVERTIDA proc
+		mov [pieza_color],cRojoClaro
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc al
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
 
 	BORRA_NEXT proc
 		;implementar
@@ -1057,7 +1270,22 @@ salir:				;inicia etiqueta salir
 	endp
 
 	BORRA_PIEZA proc
-		;implementar
+		mov cx,4
+	loop_borra_pieza:
+		push cx
+		push si
+		push di
+		posiciona_cursor [si],[di]
+			mov ah,09h				;preparar AH para interrupcion, opcion 09h
+			mov al,00h 		;AL = caracter a imprimir
+			mov cx,1				;CX = numero de veces que se imprime el caracter
+			int 10h 				;int 10h, AH=09h, imprime el caracter en AL con el color BL
+		pop di
+		pop si
+		pop cx
+		inc di
+		inc si
+		loop loop_borra_pieza
 		ret
 	endp
 
@@ -1115,30 +1343,93 @@ salir:				;inicia etiqueta salir
 		;Nota: ambos valores están en hexadecimal
 		;Se guardan los segundos en una variable
 
-		mov despla_vert,ah
+		cmp ah,20d
+		jbe mov_vert
+		jmp salida_crono
+		mov_vert:
+			mov despla_vert,ah 			;Se incrementa de acuerdo al valor del Registro AH
+		salida_crono:
+
 		ret
 
 	crono endp
 
+
 	Desplazamiento_horizontal proc
-	mov ah,06h
-	mov dl,0FFh
-	int 21h
-	jz salir_hor
-	cmp al,4Bh
-	je decremento
-	cmp al,4Dh
-	je incremento
-	jmp salir_hor
-incremento:
-	inc despla_hor
-	jmp salir_hor
-decremento:
-	dec despla_hor
-	jmp salir_hor
-salir_hor:
-	ret 
+		mov ah,06h
+		mov dl,0FFh
+		int 21h
+		jz salir_hor
+		cmp al,4Bh
+		je decremento
+		cmp al,4Dh
+		je incremento
+		jmp salir_hor
+	incremento:
+		inc despla_hor
+		jmp salir_hor
+	decremento:
+		dec despla_hor
+		jmp salir_hor
+	salir_hor:
+		ret 
 	endp
+
+	delay proc 
+	    push ax
+	    push bx
+	    push cx
+	    push dx
+
+	    ;Leyendo el tiempo actual
+	    xor bl,bl
+	    mov ah,2Ch
+	    int 21h
+
+	    ;Almacenando los segundos
+	    mov [segundos],dh
+
+	    add dl,[delay_def]      		;Calculando el tiempo de parada
+	    cmp dl,100
+	    jb ajuste_delay
+ 
+	    sub dl,100 						;Ajustando los segundos
+	    mov bl,1
+
+	    ajuste_delay:
+	    mov [delay_fin],dl
+
+	    lect_tiempo:
+	    mov ah,2Ch
+	    int 21h
+
+	    cmp bl,0h 							;Comparando por si son los segundos iguales
+	    je segs_iguales
+
+	    cmp dh,[segundos]
+	    je lect_tiempo
+	    push dx
+		    sub dh,[segundos] 				;not in the same second, so stop
+		    cmp dh,2
+	    pop dx
+	    jae fin_delay_proc
+	    jmp delay_atrasado
+
+	    segs_iguales:
+	    cmp dh,[segundos] 					;Considerando el caso cuando sea falso
+	    jne fin_delay_proc
+
+	    delay_atrasado:
+	    cmp dl,[delay_fin]					;Cada que DL esté por debajo del tiempo actual, se vuelve a leer
+	    jb lect_tiempo
+
+	    fin_delay_proc:
+	    pop dx
+	    pop cx
+	    pop bx
+	    pop ax
+	    ret
+	endp delay
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;FIN PROCEDIMIENTOS;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
