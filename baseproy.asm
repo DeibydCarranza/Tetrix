@@ -150,6 +150,7 @@ next_rens 		db 		0,0,0,0
 ;Color de la pieza siguiente, correspondiente con los colores del carácter
 next_color 		db 		0
 ;Valor de la pieza siguiente correspondiente a Piezas
+pieza_aux		db 		0
 pieza_next 		db 		linea
 ;A continuación se tienen algunas variables auxiliares
 ;Variables min y max para almacenar los extremos izquierdo, derecho, inferior y superior, para detectar colisiones
@@ -918,21 +919,28 @@ salir:				;inicia etiqueta salir
 		lea si,[next_rens]
 		mov [col_aux],next_col+10
 		mov [ren_aux],next_ren-1
-		cmp [next],cuadro
-		je next_cuadro
-		cmp [next],linea
-		je next_linea
-		cmp [next],lnormal
-		je next_l
-		cmp [next],linvertida
-		je next_l_invertida
-		cmp [next],tnormal
-		je next_t
-		cmp [next],snormal
-		je next_s
-		cmp [next],sinvertida
-		je next_s_invertida
-		jmp salir_dibuja_next
+		
+		;Genera números aleatorios entre 0-99
+		mov ah,2Ch		;Devuelve la hora del sistema
+		int 21h
+		;La interrupción devuelve centesimas en el registro DL (0-99)
+		mov pieza_aux,dl 		;Se mueve el valor obtenido, para ser comparado
+
+		cmp pieza_aux,14		
+		jbe next_cuadro			;En caso de ser dl <= 14, dibuja cuadro
+		cmp pieza_aux,28
+		jbe next_linea 			;En caso de ser 14 < dl <= 28, dibuja linea
+		cmp pieza_aux,42
+		jbe next_l_invertida	;En caso de ser 28 < dl <= 42, dibuja l invertida
+		cmp pieza_aux,56
+		jbe next_l 				;En caso de ser 42 < dl <= 56, dibuja l
+		cmp pieza_aux,70
+		jbe next_s 				;En caso de ser 56 < dl <= 70, dibuja s
+		cmp pieza_aux,84
+		jbe next_s_invertida 	;En caso de ser 70 < dl <= 84, dibuja s invertida
+		cmp pieza_aux,99
+		jbe next_t 				;En caso de ser 84 < dl <= 99, dibuja T
+
 	next_cuadro:
 		mov [pieza_next],cuadro
 		mov [next_color],cAmarillo
