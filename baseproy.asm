@@ -683,7 +683,6 @@ salir:				;inicia etiqueta salir
 			    push cx
 			    	call DIBUJA_ACTUAL				
 			    pop cx
-			    call delay
 			    push cx
 			    	call BORRA_PIEZA_ACTUAL		;borra la pieza anterior a la actual
 			    pop cx
@@ -1055,6 +1054,7 @@ salir:				;inicia etiqueta salir
 	endp
 
 	BORRA_PIEZA_ACTUAL proc
+		call delay
 		lea di,[pieza_cols]
 		lea si,[pieza_rens]
 		mov al,ini_columna
@@ -1080,31 +1080,24 @@ salir:				;inicia etiqueta salir
 		cmp [pieza_actual],sinvertida
 		je borra_actual_s_invertida
 	borra_actual_cuadro:
-		mov [actual_color],cNegro
 		call BORRA_CUADRO
 		jmp salir_borra_actual
 	borra_actual_linea:
-		mov [actual_color],cNegro
 		call BORRA_LINEA
 		jmp salir_borra_actual
 	borra_actual_l:
-		mov [actual_color],cNegro
 		call BORRA_L
 		jmp salir_borra_actual
 	borra_actual_t:
-		mov [actual_color],cNegro
 		call BORRA_T
 		jmp salir_borra_actual
 	borra_actual_s:
-		;mov [actual_color],cNegro
 		call BORRA_S
 		jmp salir_borra_actual
 	borra_actual_s_invertida:
-		mov [actual_color],cNegro
 		call BORRA_S_INVERTIDA
 		jmp salir_borra_actual
 	borra_actual_l_invertida:
-		mov [actual_color],cNegro
 		call BORRA_L_INVERTIDA
 		jmp salir_borra_actual
 	salir_borra_actual:
@@ -1114,7 +1107,6 @@ salir:				;inicia etiqueta salir
 
 	;Procedimiento para borrar una pieza de cuadro
 	BORRA_CUADRO proc
-		mov [pieza_color],cAmarillo
 		mov al,[ren_aux]
 		mov ah,[col_aux]
 		inc al
@@ -1136,7 +1128,6 @@ salir:				;inicia etiqueta salir
 
 	;Procedimiento para BORRAr una pieza de línea
 	BORRA_LINEA proc
-		mov [pieza_color],cCyanClaro
 		mov al,[ren_aux]
 		mov ah,[col_aux]
 		inc al
@@ -1157,7 +1148,6 @@ salir:				;inicia etiqueta salir
 
 	;Procedimiento para BORRAr una pieza de L
 	BORRA_L proc
-		mov [pieza_color],cCafe
 		mov al,[ren_aux]
 		mov ah,[col_aux]
 		inc al
@@ -1180,7 +1170,6 @@ salir:				;inicia etiqueta salir
 
 	;Procedimiento para BORRAr una pieza de L invertida
 	BORRA_L_INVERTIDA proc
-		mov [pieza_color],cAzul
 		mov al,[ren_aux]
 		mov ah,[col_aux]
 		inc al
@@ -1201,7 +1190,6 @@ salir:				;inicia etiqueta salir
 
 	;Procedimiento para BORRAr una pieza de T
 	BORRA_T proc
-		mov [pieza_color],cMagenta
 		mov al,[ren_aux]
 		mov ah,[col_aux]
 		inc al
@@ -1223,7 +1211,6 @@ salir:				;inicia etiqueta salir
 
 	;Procedimiento para BORRAr una pieza de S
 	BORRA_S proc
-		mov [pieza_color],cNegro
 		mov al,[ren_aux]
 		mov ah,[col_aux]
 		add al,2
@@ -1244,7 +1231,6 @@ salir:				;inicia etiqueta salir
 
 	;Procedimiento para BORRAr una pieza de S invertida
 	BORRA_S_INVERTIDA proc
-		mov [pieza_color],cRojoClaro
 		mov al,[ren_aux]
 		mov ah,[col_aux]
 		inc al
