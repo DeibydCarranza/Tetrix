@@ -675,6 +675,8 @@ salir:				;inicia etiqueta salir
 			    	call crono
 			    pop cx 
 
+				call Desplazamiento_horizontal
+
 			    push cx
 			    	call DIBUJA_ACTUAL
 			    pop cx
@@ -1117,6 +1119,26 @@ salir:				;inicia etiqueta salir
 		ret
 
 	crono endp
+
+	Desplazamiento_horizontal proc
+	mov ah,06h
+	mov dl,0FFh
+	int 21h
+	jz salir_hor
+	cmp al,4Bh
+	je decremento
+	cmp al,4Dh
+	je incremento
+	jmp salir_hor
+incremento:
+	inc despla_hor
+	jmp salir_hor
+decremento:
+	dec despla_hor
+	jmp salir_hor
+salir_hor:
+	ret 
+	endp
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;FIN PROCEDIMIENTOS;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
