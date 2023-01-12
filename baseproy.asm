@@ -362,65 +362,11 @@ imprime_ui:
 	clear 					;limpia pantalla
 	oculta_cursor_teclado	;oculta cursor del mouse
 	apaga_cursor_parpadeo 	;Deshabilita parpadeo del cursor
-	call DIBUJA_UI 			;procedimiento que dibuja marco de la interfaz de usuario
 	muestra_cursor_mouse 	;hace visible el cursor del mouse
 	posiciona_cursor_mouse 320d,16d	;establece la posición del mouse
-;Revisar que el boton izquierdo del mouse no esté presionado
-;Si el botón está suelto, continúa a la sección "mouse"
-;si no, se mantiene indefinidamente en "mouse_no_clic" hasta que se suelte
-mouse_no_clic:
-	lee_mouse
-	test bx,0001h
-	jnz mouse_no_clic
-;Lee el mouse y avanza hasta que se haga clic en el boton izquierdo
-mouse:
-	lee_mouse
-conversion_mouse:
-	;Leer la posicion del mouse y hacer la conversion a resolucion
-	;80x25 (columnas x renglones) en modo texto
-	mov ax,dx 			;Copia DX en AX. DX es un valor entre 0 y 199 (renglon)
-	div [ocho] 			;Division de 8 bits
-						;divide el valor del renglon en resolucion 640x200 en donde se encuentra el mouse
-						;para obtener el valor correspondiente en resolucion 80x25
-	xor ah,ah 			;Descartar el residuo de la division anterior
-	mov dx,ax 			;Copia AX en DX. AX es un valor entre 0 y 24 (renglon)
+	call DIBUJA_UI 			;procedimiento que dibuja marco de la interfaz de usuario
 
-	mov ax,cx 			;Copia CX en AX. CX es un valor entre 0 y 639 (columna)
-	div [ocho] 			;Division de 8 bits
-						;divide el valor de la columna en resolucion 640x200 en donde se encuentra el mouse
-						;para obtener el valor correspondiente en resolucion 80x25
-	xor ah,ah 			;Descartar el residuo de la division anterior
-	mov cx,ax 			;Copia AX en CX. AX es un valor entre 0 y 79 (columna)
 
-	;Aquí se revisa si se hizo clic en el botón izquierdo
-	test bx,0001h 		;Para revisar si el boton izquierdo del mouse fue presionado
-	jz mouse 			;Si el boton izquierdo no fue presionado, vuelve a leer el estado del mouse
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;Aqui va la lógica de la posicion del mouse;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;Si el mouse fue presionado en el renglon 0
-	;se va a revisar si fue dentro del boton [X]
-	cmp dx,0
-	je boton_x
-	jmp mouse_no_clic
-boton_x:
-	jmp boton_x1
-;Lógica para revisar si el mouse fue presionado en [X]
-;[X] se encuentra en renglon 0 y entre columnas 76 y 78
-boton_x1:
-	cmp cx,76
-	jge boton_x2
-	jmp mouse_no_clic
-boton_x2:
-	cmp cx,78
-	jbe boton_x3
-	jmp mouse_no_clic
-boton_x3:
-	;Se cumplieron todas las condiciones
-	jmp salir
-
-	jmp mouse_no_clic
 ;Si no se encontró el driver del mouse, muestra un mensaje y el usuario debe salir tecleando [enter]
 salir_enter:
 	mov ah,08h
@@ -436,6 +382,63 @@ salir:				;inicia etiqueta salir
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;PROCEDIMIENTOS;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	USO_MOUSE proc
+	push ax 
+	push bx 
+	push cx 
+	push dx 
+		lee_mouse
+	conversion_mouse:
+		;Leer la posicion del mouse y hacer la conversion a resolucion
+		;80x25 (columnas x renglones) en modo texto
+		mov ax,dx 			;Copia DX en AX. DX es un valor entre 0 y 199 (renglon)
+		div [ocho] 			;Division de 8 bits
+							;divide el valor del renglon en resolucion 640x200 en donde se encuentra el mouse
+							;para obtener el valor correspondiente en resolucion 80x25
+		xor ah,ah 			;Descartar el residuo de la division anterior
+		mov dx,ax 			;Copia AX en DX. AX es un valor entre 0 y 24 (renglon)
+
+		mov ax,cx 			;Copia CX en AX. CX es un valor entre 0 y 639 (columna)
+		div [ocho] 			;Division de 8 bits
+							;divide el valor de la columna en resolucion 640x200 en donde se encuentra el mouse
+							;para obtener el valor correspondiente en resolucion 80x25
+		xor ah,ah 			;Descartar el residuo de la division anterior
+		mov cx,ax 			;Copia AX en CX. AX es un valor entre 0 y 79 (columna)
+
+		;Aquí se revisa si se hizo clic en el botón izquierdo
+		test bx,0001h 		;Para revisar si el boton izquierdo del mouse fue presionado
+		jz salida_lect_mouse 			;Si el boton izquierdo no fue presionado, sale del procedimiento sin generar alguna  acción
+
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	;Aqui va la lógica de la posicion del mouse;
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		;Si el mouse fue presionado en el renglon 0
+		;se va a revisar si fue dentro del boton [X]
+		cmp dx,0
+		je boton_x
+		jmp salida_lect_mouse
+	boton_x:
+		jmp boton_x1
+	;Lógica para revisar si el mouse fue presionado en [X]
+	;[X] se encuentra en renglon 0 y entre columnas 76 y 78
+	boton_x1:
+		cmp cx,76
+		jge boton_x2
+		jmp salida_lect_mouse
+	boton_x2:
+		cmp cx,78
+		jbe boton_x3
+		jmp salida_lect_mouse
+	boton_x3:
+		;Se cumplieron todas las condiciones
+		jmp salir
+	salida_lect_mouse:
+		pop dx 
+		pop cx
+		pop bx 
+		pop ax
+		ret
+	endp
 	DIBUJA_UI proc
 		;imprimir esquina superior izquierda del marco
 		posiciona_cursor 0,0
@@ -667,13 +670,15 @@ salir:				;inicia etiqueta salir
 			mov [t_inicial+2],cx
 
 			loopstart:
-
+				call USO_MOUSE
 				push cx
 			    	call crono
 			    pop cx 
+
 			    push cx
 			    	call DIBUJA_ACTUAL
 			    pop cx
+
 			    jmp loopstart
  		pop dx
  		pop bx
