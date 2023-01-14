@@ -1342,15 +1342,15 @@ salir:				;inicia etiqueta salir
 
 
 	Desplazamiento_horizontal proc
-		mov ah,06h
-		mov dl,0FFh
-		int 21h
-		jz salir_hor
-		cmp al,4Bh
+		mov ah,06h 						;Opción para entrada por teclado sin espera
+		mov dl,0FFh						;Es necesario parametrizar dl con FFh
+		int 21h						
+		jz salir_hor					;Si el registro z es 1 no se registro entrada por teclado
+		cmp al,4Bh						;Si se presiona tecla flecha izquierda decrementamos 
 		je decremento
-		cmp al,4Dh
+		cmp al,4Dh						;Si se presiona tecla flecha derecha incrementamos 
 		je incremento
-		jmp salir_hor
+		jmp salir_hor					;Si se presiona otra tecla la ignoramos
 	incremento:
 		inc despla_hor
 		jmp salir_hor
