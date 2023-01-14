@@ -352,6 +352,7 @@ endm
 
 	.code
 inicio:					;etiqueta inicio
+
 	inicializa_ds_es
 	comprueba_mouse		;macro para revisar driver de mouse
 	xor ax,0FFFFh		;compara el valor de AX con FFFFh, si el resultado es zero, entonces existe el driver de mouse
@@ -366,8 +367,10 @@ imprime_ui:
 	oculta_cursor_teclado	;oculta cursor del mouse
 	apaga_cursor_parpadeo 	;Deshabilita parpadeo del cursor
 	muestra_cursor_mouse 	;hace visible el cursor del mouse
-	posiciona_cursor_mouse 320d,16d	;establece la posición del mouse
+	posiciona_cursor_mouse 320d,16d	;establece la posición del mouse	
+;inicio_juego:
 	call DIBUJA_UI 			;procedimiento que dibuja marco de la interfaz de usuario
+
 
 
 ;Si no se encontró el driver del mouse, muestra un mensaje y el usuario debe salir tecleando [enter]
@@ -419,9 +422,35 @@ salir:				;inicia etiqueta salir
 		;se va a revisar si fue dentro del boton [X]
 		cmp dx,0
 		je boton_x
+		;Si el mouse fue presionado en el centro del botón STOP 
+		cmp dx,lim_inferior-3
+		je boton_amarillo
+
+		;No se presionó dentro de un límite
 		jmp salida_lect_mouse
 	boton_x:
 		jmp boton_x1
+	boton_amarillo:
+
+		;Para el botón de stop
+		cmp cx,stop_col
+		jb salida_lect_mouse
+		cmp cx, stop_der
+		jbe boton_stop1
+
+		;Para el botón pause
+		cmp cx,pause_col
+		jb salida_lect_mouse
+		cmp cx, pause_der
+		jbe boton_pause1
+
+		;Para el botón play
+		cmp cx,play_col
+		jb salida_lect_mouse
+		cmp cx, play_der
+		jbe boton_play1
+
+
 	;Lógica para revisar si el mouse fue presionado en [X]
 	;[X] se encuentra en renglon 0 y entre columnas 76 y 78
 	boton_x1:
@@ -435,6 +464,70 @@ salir:				;inicia etiqueta salir
 	boton_x3:
 		;Se cumplieron todas las condiciones
 		jmp salir
+
+	;Lógica para calcular la posición del botón STOP dentro de los límites como variables
+	;Funciona para un renglón
+	boton_stop1:
+		cmp cx,stop_col
+		jge boton_stop2
+		jmp salida_lect_mouse
+	boton_stop2:
+		cmp cx,stop_der
+		jbe boton_stop3
+		jmp salida_lect_mouse
+	boton_stop3:
+		cmp dx,stop_sup
+		jge boton_stop4
+		jmp salida_lect_mouse
+	boton_stop4:
+		cmp dx,stop_inf
+		jbe boton_stop5
+		jmp salida_lect_mouse
+	boton_stop5:
+		jmp inicio_juego
+
+	;Lógica para calcular la posición del botón PAUSE dentro de los límites como variables
+	;Funciona para un renglón
+	boton_pause1:
+		cmp cx,pause_col
+		jge boton_pause2
+		jmp salida_lect_mouse
+	boton_pause2:
+		cmp cx,pause_der
+		jbe boton_pause3
+		jmp salida_lect_mouse
+	boton_pause3:
+		cmp dx,pause_sup
+		jge boton_pause4
+		jmp salida_lect_mouse
+	boton_pause4:
+		cmp dx,pause_inf
+		jbe boton_pause5
+		jmp salida_lect_mouse
+	boton_pause5:
+		jmp inicio_juego	
+
+	;Lógica para calcular la posición del botón PLAY dentro de los límites como variables
+	;Funciona para un renglón
+	boton_play1:
+		cmp cx,play_col
+		jge boton_play2
+		jmp salida_lect_mouse
+	boton_play2:
+		cmp cx,play_der
+		jbe boton_play3
+		jmp salida_lect_mouse
+	boton_play3:
+		cmp dx,play_sup
+		jge boton_play4
+		jmp salida_lect_mouse
+	boton_play4:
+		cmp dx,play_inf
+		jbe boton_play5
+		jmp salida_lect_mouse
+	boton_play5:
+		jmp inicio_juego	
+
 	salida_lect_mouse:
 		pop dx 
 		pop cx
@@ -537,7 +630,7 @@ salir:				;inicia etiqueta salir
 		imprime_cadena_color [titulo],finTitulo-titulo,cBlanco,bgNegro
 		call IMPRIME_TEXTOS
 		call IMPRIME_BOTONES
-
+	inicio_juego:
 		call IMPRIME_DATOS_INICIALES   
 		ret
 	endp
@@ -666,7 +759,7 @@ salir:				;inicia etiqueta salir
 		push ax  
 		push bx
 		push dx 
-			
+			call USO_MOUSE
 			mov ah,00h 				;Tomando un tiempo inicial de referencia
 			int 1Ah
 			mov [t_inicial],dx
