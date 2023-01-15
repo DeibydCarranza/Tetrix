@@ -2336,8 +2336,10 @@ salir:				;inicia etiqueta salir
 		jmp salir_hor
 	derecha:
 		call GIRO_DER
+		jmp salir_hor
 	izquierda:
 		call GIRO_IZQ
+		jmp salir_hor
 	salir_hor:
 		ret 
 	endp
