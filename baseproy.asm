@@ -107,6 +107,21 @@ linvertida	 	equ 	3
 tnormal 		equ 	4
 snormal 		equ 	5
 sinvertida 		equ 	6
+linea_g1		equ		7
+lnormal_g1		equ 	8
+lnormal_g2		equ		9
+lnormal_g3		equ		10
+linv_g1			equ 	11
+linv_g2			equ		12
+linv_g3			equ		13
+t_g1			equ 	14
+t_g2			equ		15
+t_g3			equ		16
+sn_g1 			equ		17
+sinv_g1 		equ		18
+
+;Invertir
+uno_neg			equ 	-1
 
 ;status
 paro 			equ 	0
@@ -141,7 +156,7 @@ pieza_ren		db 		ini_renglon
 pieza_cols 		db 		0,0,0,0
 pieza_rens 		db 		0,0,0,0
 ;Valor de la pieza actual correspondiente a las constantes Piezas
-pieza_actual 	db 		snormal
+pieza_actual 	db 		linvertida
 ;Color de la pieza actual, correspondiente a los colores del carácter
 actual_color 	db 		0
 ;Coordenadas de los pixeles correspondientes a la pieza siguiente
@@ -167,6 +182,8 @@ aux2 			db 		0
 ;Variables auxiliares para el manejo de posiciones
 col_aux 		db 		0
 ren_aux 		db 		0
+col_inv			db 		0
+ren_inv			db 		0
 despla_vert		db 		0
 despla_hor		db 		0
 
@@ -352,7 +369,6 @@ endm
 
 	.code
 inicio:					;etiqueta inicio
-
 	inicializa_ds_es
 	comprueba_mouse		;macro para revisar driver de mouse
 	xor ax,0FFFFh		;compara el valor de AX con FFFFh, si el resultado es zero, entonces existe el driver de mouse
@@ -367,10 +383,8 @@ imprime_ui:
 	oculta_cursor_teclado	;oculta cursor del mouse
 	apaga_cursor_parpadeo 	;Deshabilita parpadeo del cursor
 	muestra_cursor_mouse 	;hace visible el cursor del mouse
-	posiciona_cursor_mouse 320d,16d	;establece la posición del mouse	
-;inicio_juego:
+	posiciona_cursor_mouse 320d,16d	;establece la posición del mouse
 	call DIBUJA_UI 			;procedimiento que dibuja marco de la interfaz de usuario
-
 
 
 ;Si no se encontró el driver del mouse, muestra un mensaje y el usuario debe salir tecleando [enter]
@@ -422,35 +436,9 @@ salir:				;inicia etiqueta salir
 		;se va a revisar si fue dentro del boton [X]
 		cmp dx,0
 		je boton_x
-		;Si el mouse fue presionado en el centro del botón STOP 
-		cmp dx,lim_inferior-3
-		je boton_amarillo
-
-		;No se presionó dentro de un límite
 		jmp salida_lect_mouse
 	boton_x:
 		jmp boton_x1
-	boton_amarillo:
-
-		;Para el botón de stop
-		cmp cx,stop_col
-		jb salida_lect_mouse
-		cmp cx, stop_der
-		jbe boton_stop1
-
-		;Para el botón pause
-		cmp cx,pause_col
-		jb salida_lect_mouse
-		cmp cx, pause_der
-		jbe boton_pause1
-
-		;Para el botón play
-		cmp cx,play_col
-		jb salida_lect_mouse
-		cmp cx, play_der
-		jbe boton_play1
-
-
 	;Lógica para revisar si el mouse fue presionado en [X]
 	;[X] se encuentra en renglon 0 y entre columnas 76 y 78
 	boton_x1:
@@ -464,70 +452,6 @@ salir:				;inicia etiqueta salir
 	boton_x3:
 		;Se cumplieron todas las condiciones
 		jmp salir
-
-	;Lógica para calcular la posición del botón STOP dentro de los límites como variables
-	;Funciona para un renglón
-	boton_stop1:
-		cmp cx,stop_col
-		jge boton_stop2
-		jmp salida_lect_mouse
-	boton_stop2:
-		cmp cx,stop_der
-		jbe boton_stop3
-		jmp salida_lect_mouse
-	boton_stop3:
-		cmp dx,stop_sup
-		jge boton_stop4
-		jmp salida_lect_mouse
-	boton_stop4:
-		cmp dx,stop_inf
-		jbe boton_stop5
-		jmp salida_lect_mouse
-	boton_stop5:
-		jmp inicio_juego
-
-	;Lógica para calcular la posición del botón PAUSE dentro de los límites como variables
-	;Funciona para un renglón
-	boton_pause1:
-		cmp cx,pause_col
-		jge boton_pause2
-		jmp salida_lect_mouse
-	boton_pause2:
-		cmp cx,pause_der
-		jbe boton_pause3
-		jmp salida_lect_mouse
-	boton_pause3:
-		cmp dx,pause_sup
-		jge boton_pause4
-		jmp salida_lect_mouse
-	boton_pause4:
-		cmp dx,pause_inf
-		jbe boton_pause5
-		jmp salida_lect_mouse
-	boton_pause5:
-		jmp inicio_juego	
-
-	;Lógica para calcular la posición del botón PLAY dentro de los límites como variables
-	;Funciona para un renglón
-	boton_play1:
-		cmp cx,play_col
-		jge boton_play2
-		jmp salida_lect_mouse
-	boton_play2:
-		cmp cx,play_der
-		jbe boton_play3
-		jmp salida_lect_mouse
-	boton_play3:
-		cmp dx,play_sup
-		jge boton_play4
-		jmp salida_lect_mouse
-	boton_play4:
-		cmp dx,play_inf
-		jbe boton_play5
-		jmp salida_lect_mouse
-	boton_play5:
-		jmp inicio_juego	
-
 	salida_lect_mouse:
 		pop dx 
 		pop cx
@@ -630,7 +554,7 @@ salir:				;inicia etiqueta salir
 		imprime_cadena_color [titulo],finTitulo-titulo,cBlanco,bgNegro
 		call IMPRIME_TEXTOS
 		call IMPRIME_BOTONES
-	inicio_juego:
+
 		call IMPRIME_DATOS_INICIALES   
 		ret
 	endp
@@ -759,7 +683,7 @@ salir:				;inicia etiqueta salir
 		push ax  
 		push bx
 		push dx 
-			call USO_MOUSE
+			
 			mov ah,00h 				;Tomando un tiempo inicial de referencia
 			int 1Ah
 			mov [t_inicial],dx
@@ -770,12 +694,14 @@ salir:				;inicia etiqueta salir
 				
 				
 			    call Desplazamiento_horizontal		;se habilitan los movimientos horizontales
+			    
 			    push cx
 			    	call crono 					;Llamada al uso de los ticks
 			    pop cx
 			    push cx
 			    	call DIBUJA_ACTUAL				
 			    pop cx
+			    	;call GIROS
 			    push cx
 			    	call BORRA_PIEZA_ACTUAL		;borra la pieza anterior a la actual
 			    pop cx
@@ -889,6 +815,27 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	;Procedimiento para dibujar línea derecha
+	DIBUJA_LINEA_G1 proc
+		mov [pieza_color],cCyanClaro
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc al
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
 	;Procedimiento para dibujar una pieza de L
 	DIBUJA_L proc
 		mov [pieza_color],cCafe
@@ -903,6 +850,71 @@ salir:				;inicia etiqueta salir
 		mov [di+1],ah
 		dec al
 		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L Giro
+	DIBUJA_L_G1 proc
+		mov [pieza_color],cCafe
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc al
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L 
+	DIBUJA_L_G2 proc
+		mov [pieza_color],cCafe
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah 
+		inc ah 
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		dec ah 
+		mov [si+2],al
+		mov [di+2],ah
+		dec ah
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L 
+	DIBUJA_L_G3 proc
+		mov [pieza_color],cCafe
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc al 
 		mov [si+2],al
 		mov [di+2],ah
 		inc ah
@@ -933,6 +945,72 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	;Procedimiento para dibujar una pieza de L invertida
+	DIBUJA_L_INVERTIDA_G1 proc
+		mov [pieza_color],cAzul
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc al
+		mov [si+2],al
+		mov [di+2],ah
+		dec ah
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L invertida
+	DIBUJA_L_INVERTIDA_G2 proc
+		mov [pieza_color],cAzul
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L invertida
+	DIBUJA_L_INVERTIDA_G3 proc
+		mov [pieza_color],cAzul
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
+		dec ah
+		dec ah
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
 	;Procedimiento para dibujar una pieza de T
 	DIBUJA_T proc
 		mov [pieza_color],cMagenta
@@ -955,6 +1033,75 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	;Procedimiento para dibujar una pieza de T
+	DIBUJA_T_G1 proc
+		mov [pieza_color],cMagenta
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al 
+		dec ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc al 
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de T
+	DIBUJA_T_G2 proc
+		mov [pieza_color],cMagenta
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al 
+		dec ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah 
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de T
+	DIBUJA_T_G3 proc
+		mov [pieza_color],cMagenta
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al 
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		dec ah 
+		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
+
 	;Procedimiento para dibujar una pieza de S
 	DIBUJA_S proc
 		mov [pieza_color],cVerdeClaro
@@ -976,6 +1123,27 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	;Procedimiento para dibujar s girada
+	DIBUJA_S_G1 proc
+		mov [pieza_color],cVerdeClaro
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
 	;Procedimiento para dibujar una pieza de S invertida
 	DIBUJA_S_INVERTIDA proc
 		mov [pieza_color],cRojoClaro
@@ -991,6 +1159,28 @@ salir:				;inicia etiqueta salir
 		mov [si+2],al
 		mov [di+2],ah
 		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar s invertida girada
+	DIBUJA_S_INVERTIDA_G1 proc
+		mov [pieza_color],cRojoClaro
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al 
+		mov [si+1],al
+		mov [di+1],ah
+		dec ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
 		mov [si+3],al
 		mov [di+3],ah
 		call DIBUJA_PIEZA
@@ -1102,45 +1292,131 @@ salir:				;inicia etiqueta salir
 		mov [pieza_ren],ah
 		cmp [pieza_actual],cuadro
 		je inicia_actual_cuadro
+
 		cmp [pieza_actual],linea
 		je inicia_actual_linea
+		cmp [pieza_actual],linea_g1
+		je inicia_actual_linea_g1
+
 		cmp [pieza_actual],lnormal
 		je inicia_actual_l
+		cmp [pieza_actual],lnormal_g1
+		je inicia_actual_l_g1
+		cmp [pieza_actual],lnormal_g2
+		je inicia_actual_l_g2
+		cmp [pieza_actual],lnormal_g3
+		je inicia_actual_l_g3
+
 		cmp [pieza_actual],linvertida
 		je inicia_actual_l_invertida
+		cmp [pieza_actual],linv_g1
+		je inicia_actual_l_invertida_g1
+		cmp [pieza_actual],linv_g2
+		je inicia_actual_l_invertida_g2
+		cmp [pieza_actual],linv_g3
+		je inicia_actual_l_invertida_g3
+
 		cmp [pieza_actual],tnormal
 		je inicia_actual_t
+		cmp [pieza_actual],t_g1
+		je inicia_actual_t_g1
+		cmp [pieza_actual],t_g2
+		je inicia_actual_t_g2
+		cmp [pieza_actual],t_g3
+		je inicia_actual_t_g3
+
 		cmp [pieza_actual],snormal
 		je inicia_actual_s
+		cmp [pieza_actual],sn_g1
+		je inicia_actual_s_g1
+
 		cmp [pieza_actual],sinvertida
 		je inicia_actual_s_invertida
+		cmp [pieza_actual],sinv_g1
+		je inicia_actual_s_invertida_g1
+
+
 	inicia_actual_cuadro:
 		mov [actual_color],cAmarillo
 		call DIBUJA_CUADRO
 		jmp salir_inicia_actual
+
 	inicia_actual_linea:
 		mov [actual_color],cCyanClaro
 		call DIBUJA_LINEA
 		jmp salir_inicia_actual
+	inicia_actual_linea_g1:
+		mov [actual_color],cCyanClaro
+		call DIBUJA_LINEA_G1
+		jmp salir_inicia_actual
+
 	inicia_actual_l:
 		mov [actual_color],cCafe
 		call DIBUJA_L
 		jmp salir_inicia_actual
+	inicia_actual_l_g1:
+		mov [actual_color],cCafe
+		call DIBUJA_L_G1
+		jmp salir_inicia_actual
+	inicia_actual_l_g2:
+		mov [actual_color],cCafe
+		call DIBUJA_L_G2
+		jmp salir_inicia_actual
+	inicia_actual_l_g3:
+		mov [actual_color],cCafe
+		call DIBUJA_L_G3
+		jmp salir_inicia_actual
+
 	inicia_actual_t:
 		mov [actual_color],cMagenta
 		call DIBUJA_T
 		jmp salir_inicia_actual
+	inicia_actual_t_g1:
+		mov [actual_color],cMagenta
+		call DIBUJA_T_G1
+		jmp salir_inicia_actual
+	inicia_actual_t_g2:
+		mov [actual_color],cMagenta
+		call DIBUJA_T_G2
+		jmp salir_inicia_actual
+	inicia_actual_t_g3:
+		mov [actual_color],cMagenta
+		call DIBUJA_T_G3
+		jmp salir_inicia_actual
+
 	inicia_actual_s:
 		mov [actual_color],cVerdeClaro
 		call DIBUJA_S
 		jmp salir_inicia_actual
+	inicia_actual_s_g1:
+		mov [actual_color],cVerdeClaro
+		call DIBUJA_S_G1
+		jmp salir_inicia_actual
+
 	inicia_actual_s_invertida:
 		mov [actual_color],cRojoClaro
 		call DIBUJA_S_INVERTIDA
 		jmp salir_inicia_actual
+	inicia_actual_s_invertida_g1:
+		mov [actual_color],cRojoClaro
+		call DIBUJA_S_INVERTIDA_G1
+		jmp salir_inicia_actual
+
 	inicia_actual_l_invertida:
 		mov [actual_color],cAzul
 		call DIBUJA_L_INVERTIDA
+		jmp salir_inicia_actual
+	inicia_actual_l_invertida_g1:
+		mov [actual_color],cAzul
+		call DIBUJA_L_INVERTIDA_G1
+		jmp salir_inicia_actual
+	inicia_actual_l_invertida_g2:
+		mov [actual_color],cAzul
+		call DIBUJA_L_INVERTIDA_G2
+		jmp salir_inicia_actual
+	inicia_actual_l_invertida_g3:
+		mov [actual_color],cAzul
+		call DIBUJA_L_INVERTIDA_G3
 		jmp salir_inicia_actual
 	salir_inicia_actual:
 		ret
@@ -1160,38 +1436,115 @@ salir:				;inicia etiqueta salir
 		mov [pieza_ren],ah
 		cmp [pieza_actual],cuadro
 		je borra_actual_cuadro
+
 		cmp [pieza_actual],linea
 		je borra_actual_linea
+		cmp [pieza_actual],linea_g1
+		je borra_actual_linea_g1
+
 		cmp [pieza_actual],lnormal
 		je borra_actual_l
+		cmp [pieza_actual],lnormal_g1
+		je borra_actual_l_g1
+		cmp [pieza_actual],lnormal_g2
+		je borra_actual_l_g2
+		cmp [pieza_actual],lnormal_g3
+		je borra_actual_l_g3
+
 		cmp [pieza_actual],linvertida
 		je borra_actual_l_invertida
+		cmp [pieza_actual],linv_g1
+		je borra_actual_l_invertida_g1
+		cmp [pieza_actual],linv_g2
+		je borra_actual_l_invertida_g2
+		cmp [pieza_actual],linv_g3
+		je borra_actual_l_invertida_g3
+
 		cmp [pieza_actual],tnormal
 		je borra_actual_t
+		cmp [pieza_actual],t_g1
+		je borra_actual_t_g1
+		cmp [pieza_actual],t_g2
+		je borra_actual_t_g2
+		cmp [pieza_actual],t_g3
+		je borra_actual_t_g3
+
 		cmp [pieza_actual],snormal
 		je borra_actual_s
+		cmp [pieza_actual],sn_g1
+		je borra_actual_s_g1
+
 		cmp [pieza_actual],sinvertida
 		je borra_actual_s_invertida
+		cmp [pieza_actual],sinv_g1
+		je borra_actual_s_invertida_g1
+
 	borra_actual_cuadro:
 		call BORRA_CUADRO
 		jmp salir_borra_actual
+
 	borra_actual_linea:
 		call BORRA_LINEA
 		jmp salir_borra_actual
+	borra_actual_linea_g1:
+		mov [actual_color],cCyanClaro
+		call BORRA_LINEA_G1
+		jmp salir_inicia_actual
+
 	borra_actual_l:
 		call BORRA_L
 		jmp salir_borra_actual
+	borra_actual_l_g1:
+		mov [actual_color],cCafe
+		call BORRA_L_G1 
+		jmp salir_inicia_actual
+	borra_actual_l_g2:
+		mov [actual_color],cCafe
+		call BORRA_L_G2
+		jmp salir_inicia_actual
+	borra_actual_l_g3:
+		mov [actual_color],cCafe
+		call BORRA_L_G3
+		jmp salir_inicia_actual
+
 	borra_actual_t:
 		call BORRA_T
 		jmp salir_borra_actual
+	borra_actual_t_g1:
+		call BORRA_T_G1
+		jmp salir_borra_actual
+	borra_actual_t_g2:
+		call BORRA_T_G2
+		jmp salir_borra_actual
+	borra_actual_t_g3:
+		call BORRA_T_G3
+		jmp salir_borra_actual
+
 	borra_actual_s:
 		call BORRA_S
 		jmp salir_borra_actual
+	borra_actual_s_g1:
+		call BORRA_S_G1
+		jmp salir_borra_actual
+
 	borra_actual_s_invertida:
 		call BORRA_S_INVERTIDA
 		jmp salir_borra_actual
+	borra_actual_s_invertida_g1:
+		call BORRA_S_INVERTIDA_G1
+		jmp salir_borra_actual
+
 	borra_actual_l_invertida:
 		call BORRA_L_INVERTIDA
+		jmp salir_borra_actual
+	borra_actual_l_invertida_g1:
+		call BORRA_L_INVERTIDA_G1
+		jmp salir_borra_actual
+	borra_actual_l_invertida_g2:
+		call BORRA_L_INVERTIDA_G2
+		jmp salir_borra_actual
+	borra_actual_l_invertida_g3:
+		call BORRA_L_INVERTIDA_G3
 		jmp salir_borra_actual
 	salir_borra_actual:
 		ret
@@ -1239,6 +1592,26 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	;Procedimiento para dibujar línea derecha
+	BORRA_LINEA_G1 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc al
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
 	;Procedimiento para BORRAr una pieza de L
 	BORRA_L proc
 		mov al,[ren_aux]
@@ -1261,6 +1634,68 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	;Procedimiento para dibujar una pieza de L Giro
+	BORRA_L_G1 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc al
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L 
+	BORRA_L_G2 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah 
+		inc ah 
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		dec ah 
+		mov [si+2],al
+		mov [di+2],ah
+		dec ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L 
+	BORRA_L_G3 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc al 
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp	
+
 	;Procedimiento para BORRAr una pieza de L invertida
 	BORRA_L_INVERTIDA proc
 		mov al,[ren_aux]
@@ -1275,6 +1710,71 @@ salir:				;inicia etiqueta salir
 		mov [si+2],al
 		mov [di+2],ah
 		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L invertida
+	BORRA_L_INVERTIDA_G1 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc al
+		mov [si+2],al
+		mov [di+2],ah
+		dec ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L invertida
+	BORRA_L_INVERTIDA_G2 proc
+		mov [pieza_color],cAzul
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de L invertida
+	BORRA_L_INVERTIDA_G3 proc
+		mov [pieza_color],cAzul
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
+		dec ah
+		dec ah
 		mov [si+3],al
 		mov [di+3],ah
 		call BORRA_PIEZA
@@ -1302,6 +1802,71 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	;Procedimiento para dibujar una pieza de T
+	BORRA_T_G1 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al 
+		dec ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc al 
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de T
+	BORRA_T_G2 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al 
+		dec ah
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc ah 
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar una pieza de T
+	BORRA_T_G3 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al 
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		dec ah 
+		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
 	;Procedimiento para BORRAr una pieza de S
 	BORRA_S proc
 		mov al,[ren_aux]
@@ -1316,6 +1881,26 @@ salir:				;inicia etiqueta salir
 		mov [si+2],al
 		mov [di+2],ah
 		inc ah
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
+
+	;Procedimiento para dibujar s girada
+	BORRA_S_G1 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
 		mov [si+3],al
 		mov [di+3],ah
 		call BORRA_PIEZA
@@ -1342,6 +1927,26 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	;Procedimiento para dibujar s invertida girada
+	BORRA_S_INVERTIDA_G1 proc
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al 
+		mov [si+1],al
+		mov [di+1],ah
+		dec ah
+		mov [si+2],al
+		mov [di+2],ah
+		inc al
+		mov [si+3],al
+		mov [di+3],ah
+		call BORRA_PIEZA
+		ret
+	endp
 
 	BORRA_NEXT proc
 		;implementar
@@ -1368,14 +1973,201 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+		
+	;Se realiza la multiplicación por matriz para rotar
 	GIRO_DER proc
-		;implementar
-		ret
+		
+		cmp [pieza_actual],linea
+		je giro_linea
+		cmp [pieza_actual],linea_g1
+		je giro_linea2
+		cmp [pieza_actual],lnormal
+		je giro_l
+		cmp [pieza_actual],lnormal_g1
+		je giro_l2
+		cmp [pieza_actual],lnormal_g2
+		je giro_l3
+		cmp [pieza_actual],lnormal_g3
+		je giro_l4
+		cmp [pieza_actual],linvertida
+		je giro_J
+		cmp [pieza_actual],linv_g1
+		je giro_J2
+		cmp [pieza_actual],linv_g2
+		je giro_J3
+		cmp [pieza_actual],linv_g3
+		je giro_J4
+		cmp [pieza_actual],tnormal
+		je giro_T
+		cmp [pieza_actual],t_g1
+		je giro_T2
+		cmp [pieza_actual],t_g2
+		je giro_T3
+		cmp [pieza_actual],t_g3
+		je giro_T4
+		cmp [pieza_actual],snormal
+		je giro_s
+		cmp [pieza_actual],sn_g1
+		je giro_s2
+		cmp [pieza_actual],sinvertida
+		je giro_Z
+		cmp [pieza_actual],sinv_g1
+		je giro_Z2
+
+		giro_linea:
+			mov [pieza_actual],linea_g1
+			jmp salida_giro
+		giro_linea2:
+			mov [pieza_actual],linea
+			jmp salida_giro
+		giro_l:
+			mov [pieza_actual],lnormal_g1
+			jmp salida_giro
+		giro_l2:
+			mov [pieza_actual],lnormal_g2
+			jmp salida_giro
+		giro_l3:
+			mov [pieza_actual],lnormal_g3
+			jmp salida_giro
+		giro_l4:
+			mov [pieza_actual],lnormal
+			jmp salida_giro
+		giro_J:
+			mov [pieza_actual],linv_g1
+			jmp salida_giro
+		giro_J2:
+			mov [pieza_actual],linv_g2
+			jmp salida_giro
+		giro_J3:
+			mov [pieza_actual],linv_g3
+			jmp salida_giro
+		giro_J4:
+			mov [pieza_actual],linvertida
+			jmp salida_giro
+		giro_T:
+			mov [pieza_actual],t_g1
+			jmp salida_giro
+		giro_T2:
+			mov [pieza_actual],t_g2
+			jmp salida_giro
+		giro_T3:
+			mov [pieza_actual],t_g3
+			jmp salida_giro
+		giro_T4:
+			mov [pieza_actual],tnormal
+			jmp salida_giro
+		giro_s:
+			mov [pieza_actual],sn_g1
+			jmp salida_giro
+		giro_s2:
+			mov [pieza_actual],snormal
+			jmp salida_giro
+		giro_Z:
+			mov [pieza_actual],sinv_g1
+			jmp salida_giro
+		giro_Z2:
+			mov [pieza_actual],sinvertida
+			jmp salida_giro
+		
+		salida_giro:
+			ret 
 	endp
 
 	GIRO_IZQ proc
-		;implementar
-		ret
+		
+		cmp [pieza_actual],linea
+		je giroI_linea
+		cmp [pieza_actual],linea_g1
+		je giroI_linea2
+		cmp [pieza_actual],lnormal
+		je giroI_l
+		cmp [pieza_actual],lnormal_g3
+		je giroI_l2
+		cmp [pieza_actual],lnormal_g2
+		je giroI_l3
+		cmp [pieza_actual],lnormal_g1
+		je giroI_l4
+		cmp [pieza_actual],linvertida
+		je giroI_J
+		cmp [pieza_actual],linv_g3
+		je giroI_J2
+		cmp [pieza_actual],linv_g2
+		je giroI_J3
+		cmp [pieza_actual],linv_g1
+		je giroI_J4
+		cmp [pieza_actual],tnormal
+		je giroI_T
+		cmp [pieza_actual],t_g3
+		je giroI_T2
+		cmp [pieza_actual],t_g2
+		je giroI_T3
+		cmp [pieza_actual],t_g1
+		je giroI_T4
+		cmp [pieza_actual],snormal
+		je giroI_s
+		cmp [pieza_actual],sn_g1
+		je giroI_s2
+		cmp [pieza_actual],sinvertida
+		je giroI_Z
+		cmp [pieza_actual],sinv_g1
+		je giroI_Z2
+
+		giroI_linea:
+			mov [pieza_actual],linea_g1
+			jmp salida_giroI
+		giroI_linea2:
+			mov [pieza_actual],linea
+			jmp salida_giroI
+		giroI_l:
+			mov [pieza_actual],lnormal_g3
+			jmp salida_giroI
+		giroI_l2:
+			mov [pieza_actual],lnormal_g2
+			jmp salida_giroI
+		giroI_l3:
+			mov [pieza_actual],lnormal_g1
+			jmp salida_giroI
+		giroI_l4:
+			mov [pieza_actual],lnormal
+			jmp salida_giroI
+		giroI_J:
+			mov [pieza_actual],linv_g3
+			jmp salida_giroI
+		giroI_J2:
+			mov [pieza_actual],linv_g2
+			jmp salida_giroI
+		giroI_J3:
+			mov [pieza_actual],linv_g1
+			jmp salida_giroI
+		giroI_J4:
+			mov [pieza_actual],linvertida
+			jmp salida_giroI
+		giroI_T:
+			mov [pieza_actual],t_g3
+			jmp salida_giroI
+		giroI_T2:
+			mov [pieza_actual],t_g2
+			jmp salida_giroI
+		giroI_T3:
+			mov [pieza_actual],t_g1
+			jmp salida_giroI
+		giroI_T4:
+			mov [pieza_actual],tnormal
+			jmp salida_giroI
+		giroI_s:
+			mov [pieza_actual],sn_g1
+			jmp salida_giroI
+		giroI_s2:
+			mov [pieza_actual],snormal
+			jmp salida_giroI
+		giroI_Z:
+			mov [pieza_actual],sinv_g1
+			jmp salida_giroI
+		giroI_Z2:
+			mov [pieza_actual],sinvertida
+			jmp salida_giroI
+		salida_giroI:
+			ret
 	endp
 	crono proc
 		;Se vuelve a leer el contador de ticks
@@ -1435,21 +2227,29 @@ salir:				;inicia etiqueta salir
 
 
 	Desplazamiento_horizontal proc
-		mov ah,06h 						;Opción para entrada por teclado sin espera
-		mov dl,0FFh						;Es necesario parametrizar dl con FFh
-		int 21h						
-		jz salir_hor					;Si el registro z es 1 no se registro entrada por teclado
-		cmp al,4Bh						;Si se presiona tecla flecha izquierda decrementamos 
+		mov ah,06h
+		mov dl,0FFh
+		int 21h
+		jz salir_hor
+		cmp al,4Bh
 		je decremento
-		cmp al,4Dh						;Si se presiona tecla flecha derecha incrementamos 
+		cmp al,4Dh
 		je incremento
-		jmp salir_hor					;Si se presiona otra tecla la ignoramos
+		cmp al,64h
+		je derecha
+		cmp al,61h
+		je izquierda
+		jmp salir_hor
 	incremento:
 		inc despla_hor
 		jmp salir_hor
 	decremento:
 		dec despla_hor
 		jmp salir_hor
+	derecha:
+		call GIRO_DER
+	izquierda:
+		call GIRO_IZQ
 	salir_hor:
 		ret 
 	endp
