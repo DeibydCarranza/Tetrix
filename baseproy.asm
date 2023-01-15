@@ -195,12 +195,13 @@ mil				dw		1000 	;dato de valor decimal 1000 para operación DIV entre 1000
 diez 			dw 		10
 cien 			db 		100 	;dato de valor decimal 100 para operación DIV entre 100
 sesenta 		db 		60		;dato de valor decimal 60 para operación DIV entre 60
+treinta 		db 		70
 contador 		dw		0		;variable contador
 segundos 		db 		0 		;Variable para ver los segundos
 delay_def		db 		1 		;Cada segundo se muestra la siguiente pieza
 delay_fin		db 		0 		;Para comparar el delay inicial (por si es igual)
 
-status 			db 		0 		;Status de juegos: 0 stop, 1 active, 2 pause
+status 			db 		0 		;Status de juegos: 0 stop, 1 pause, 2 play
 conta 			db 		0 		;Contador auxiliar para algunas operaciones
 
 ;Variables que sirven de parámetros de entrada para el procedimiento IMPRIME_BOTON
@@ -518,7 +519,8 @@ salir:				;inicia etiqueta salir
 		jbe boton_pause5
 		jmp salida_lect_mouse
 	boton_pause5:
-		jmp inicio_juego	
+		mov [status],1d
+		jmp salida_lect_mouse	
 
 	;Lógica para calcular la posición del botón PLAY dentro de los límites como variables
 	;Funciona para un renglón
@@ -539,7 +541,8 @@ salir:				;inicia etiqueta salir
 		jbe boton_play5
 		jmp salida_lect_mouse
 	boton_play5:
-		jmp inicio_juego
+		mov [status],2d
+		jmp salida_lect_mouse
 	salida_lect_mouse:
 		pop dx 
 		pop cx
@@ -1364,6 +1367,16 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	ACTUALIZA_FIGURA proc 
+		mov al,[pieza_aux]
+		mov [pieza_actual],al 
+		mov [despla_hor],0
+		mov [despla_vert],0
+		call BORRA_NEXT
+		call DIBUJA_NEXT
+		call DIBUJA_ACTUAL
+		ret 
+	endp
 	;DIBUJA_ACTUAL - se usa para imprimir la pieza actual en pantalla
 	;Primero se debe calcular qué pieza se va a dibujar
 	;Dentro del procedimiento se utilizan variables referentes a la pieza actual
@@ -2037,7 +2050,48 @@ salir:				;inicia etiqueta salir
 	endp
 
 	BORRA_NEXT proc
-		;implementar
+		lea di,[next_cols]
+		lea si,[next_rens]
+		mov [col_aux],next_col+10
+		mov [ren_aux],next_ren-1
+
+		cmp [pieza_aux],cuadro	
+		jbe bnext_cuadro			;En caso de ser dl <= 14, dibuja cuadro
+		cmp [pieza_aux],linea
+		jbe bnext_linea 			;En caso de ser 14 < dl <= 28, dibuja linea
+		cmp [pieza_aux],linvertida
+		jbe bnext_l_invertida	;En caso de ser 28 < dl <= 42, dibuja l invertida
+		cmp [pieza_aux],lnormal
+		jbe bnext_l 				;En caso de ser 42 < dl <= 56, dibuja l
+		cmp [pieza_aux],snormal
+		jbe bnext_s 				;En caso de ser 56 < dl <= 70, dibuja s
+		cmp [pieza_aux],sinvertida
+		jbe bnext_s_invertida 	;En caso de ser 70 < dl <= 84, dibuja s invertida
+		cmp [pieza_aux],tnormal
+		jbe bnext_t 				;En caso de ser 84 < dl <= 99, dibuja T
+
+	bnext_cuadro:
+		call BORRA_CUADRO
+		jmp salir_borra_next
+	bnext_linea:
+		call BORRA_LINEA
+		jmp salir_borra_next
+	bnext_l:
+		call BORRA_L
+		jmp salir_borra_next
+	bnext_l_invertida:
+		call BORRA_L_INVERTIDA
+		jmp salir_borra_next
+	bnext_t:
+		call BORRA_T
+		jmp salir_borra_next
+	bnext_s:
+		call BORRA_S
+		jmp salir_borra_next
+	bnext_s_invertida:
+		call BORRA_S_INVERTIDA
+		jmp salir_borra_next
+	salir_borra_next:
 		ret
 	endp
 
@@ -2258,55 +2312,27 @@ salir:				;inicia etiqueta salir
 			ret
 	endp
 	crono proc
-		;Se vuelve a leer el contador de ticks
-		;Se lee para saber cuántos ticks pasaron entre la lectura inicial y ésta
-		;De esa forma, se obtiene la diferencia de ticks
-		;por cada incremento en el contador de ticks, transcurrieron 55 ms
+		cmp status,2
+		jne salida_crono
 		mov ah,00h
 		int 1Ah
-
-		;Se recupera el valor de los ticks iniciales para poder hacer la diferencia entre
-		;el valor inicial y el último recuperado
-		mov ax,[t_inicial]		;AX = parte baja de t_inicial
-		mov bx,[t_inicial+2]	;BX = parte alta de t_inicial
-		
+		mov ax,[t_inicial]
+		mov bx,[t_inicial+2]
 		;Se hace la resta de los valores para obtener la diferencia
 		sub dx,ax  				;DX = DX - AX = t_final - t_inicial, DX guarda la parte baja del contador de ticks
-		sbb cx,bx 				;CX = CX - BX - C = t_final - t_inicial - C, CX guarda la parte alta del contador de ticks y se resta el acarreo si hubo en la resta anterior
-
-		;Se asume que el valor de CX es cronómetro
-		;Significaría que la diferencia de ticks no es mayor a 65535d
-		;Si la diferencia está entre 0d y 65535d, significa que hay un máximo de 65535 * 55ms =  3,604,425 milisegundos
+		;Si la diferencia está entre 0d y 65535d, significa que hay un máximo 3,604,425 milisegundos
 		mov ax,dx
 
-		;Se multiplica la diferencia de ticks por 55ms para obtener 
-		;la diferencia en milisegundos
 		mul [tick_ms]
-
-		;El valor anterior se divide entre 1000 para calcular la cantidad de segundos 
-		;y la cantidad de milisegundos del cronómetro (0d - 999d)
 		div [mil]
-
-		;Después de esta división, el cociente AX guarda el valor de segundos
-		;el residuo DX tiene la cantidad de milisegundos del cronómetro (0- 999d)
-
-		;Se guardan los milisegundos en una variable
-		;Nota: este valor se guarda en hexadecimal
-		;mov [milisegundos],dx
-
-		;El valor de AX de la división anterior se divide entre 60
-		;Segundos a minutos
 		div [sesenta]
-		;Al final de la división, AH tiene el valor de los segundos (0 -59d) 
-		;y AL los minutos (>=0)
-		;Nota: ambos valores están en hexadecimal
-		;Se guardan los segundos en una variable
 
-		cmp ah,20d
+
+		cmp despla_vert,19d
 		jbe mov_vert
 		jmp salida_crono
 		mov_vert:
-			mov despla_vert,ah 			;Se incrementa de acuerdo al valor del Registro AH
+			mov despla_vert,ah			
 		salida_crono:
 
 		ret
