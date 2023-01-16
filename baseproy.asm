@@ -2622,7 +2622,7 @@ salir:				;inicia etiqueta salir
 	    cmp dh,[segundos]
 	    je lect_tiempo
 	    push dx
-		    sub dh,[segundos] 				;not in the same second, so stop
+		    sub dh,[segundos] 				
 		    cmp dh,2
 	    pop dx
 	    jae fin_delay_proc
