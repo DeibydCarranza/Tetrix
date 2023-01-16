@@ -800,7 +800,7 @@ salir:				;inicia etiqueta salir
 
 			loopstart:
 				
-				
+				no_borra:
 				call USO_MOUSE
 				
 				;loop que contiene las funcionalidades principales del movimiento
@@ -815,14 +815,19 @@ salir:				;inicia etiqueta salir
 				pop cx
  
 				;Para cuando colisiona con los bordes laterales
-				cmp tope_inferior,1
+				cmp estado_localidad,1
 				je no_borra
+
+				cmp tope_inferior,1
+				je actualiza_ciclo
 
 			    push cx
 			    	call BORRA_PIEZA_ACTUAL		;borra la pieza anterior a la actual
+
 				pop cx
 				jmp loopstart
-				no_borra:
+
+				actualiza_ciclo:
 				call ACTUALIZA_FIGURA
 			    jmp loopstart
  		pop dx
@@ -1350,6 +1355,12 @@ salir:				;inicia etiqueta salir
 		jmp salir_chequeoV
 		marca_ocupadoV:
 		mov tope_inferior,1 			;ocuopado
+		xor ax,ax
+		mov al,tope_inferior
+		push ax
+		call DIBUJA_ACTUAL
+		pop ax
+		mov tope_inferior,al
 		salir_chequeoV:
 		pop di
 		pop si
@@ -1359,13 +1370,12 @@ salir:				;inicia etiqueta salir
 	DIBUJA_PIEZA proc
 	;================
 	;Colisión 
-	;Marcos laterlas 
-	mov aux2,20
+	;Tope inferior
 	mov caracter_a_evaluar,0CDh
 	call checa_localidadesV
 	cmp tope_inferior,1
 	je no_dibuja
-	;Tope inferior
+	;Marcos laterlas 
 	mov aux1,0
 	mov aux2,28
 	mov caracter_a_evaluar,0BAh
@@ -1629,8 +1639,9 @@ salir:				;inicia etiqueta salir
 		lea si,[pieza_rens]
 		mov al,ini_columna
 		mov ah,ini_renglon
-		cmp despla_vert,20d
-		je salir_borra_actual
+		; call checa_localidadesV
+		; cmp tope_inferior,1
+		; je salir_borra_actual
 		add al, [despla_hor]
 		add ah, [despla_vert]
 		mov [col_aux],al
@@ -2560,10 +2571,6 @@ salir:				;inicia etiqueta salir
 		jmp negativoV
 		positivoV:
 			mov estado,1				;indicador para marcar que si es un caracter del marco
-			cmp dh,aux2
-			jae	DpositivoV
-			DpositivoV:
-			dec despla_vert
 			dec despla_vert
 			jmp avisaV					;Para evitar errores de casos excepcionales
 		negativoV:
