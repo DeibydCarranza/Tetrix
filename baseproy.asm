@@ -516,6 +516,7 @@ salir:				;inicia etiqueta salir
 		mov aux1,0
 		mov despla_vert,0
 		mov despla_hor,0
+		call ACTUALIZA_FIGURA
 		jmp inicio_juego
 
 	;Lógica para calcular la posición del botón PAUSE dentro de los límites como variables
@@ -538,6 +539,7 @@ salir:				;inicia etiqueta salir
 		jmp salida_lect_mouse
 	boton_pause5:
 		mov [status],1d
+		inicio_crono
 		jmp salida_lect_mouse
 
 	;Lógica para calcular la posición del botón PLAY dentro de los límites como variables
@@ -2393,42 +2395,26 @@ salir:				;inicia etiqueta salir
 	
 	crono proc
 		cmp status,1
-		je intercambio_tiempo
+		je salida_crono
 
 		mov ah,00h
 		int 1Ah
 		mov ax,[t_inicial]
-		;Se hace la resta de los valores para obtener la diferencia
 		sub dx,ax  				;DX = DX - AX = t_final - t_inicial, DX guarda la parte baja del contador de ticks
 		mov ax,dx
 
 		mul [tick_ms]
 		div [mil]
 		div [sesenta]
-
-		mov [segundos],ah
-		jmp flujo_tiempo
+	
 		
-		intercambio_tiempo:
-		
-			mov ah,[segundos]
-			mov [aux1],ah
-				jmp salida_crono
-				
-		flujo_tiempo:
-			cmp [aux1],0h
-			jz aux_es0
-			mov ah,[aux1]
-			jmp flujo_normal
-		aux_es0:
-			add ah,[aux1]
-
-		flujo_normal:
+	flujo_tiempo:
 			mov [segundos],ah
 			mov dl,[segundos]
 			mov despla_vert,dl
 		xor dx,dx
 		salida_crono:
+
 		ret
 	crono endp
 
