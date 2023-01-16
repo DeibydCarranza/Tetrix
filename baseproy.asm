@@ -119,6 +119,7 @@ t_g2			equ		15
 t_g3			equ		16
 sn_g1 			equ		17
 sinv_g1 		equ		18
+cuadro_g1 		equ		19
 
 ;Invertir
 uno_neg			equ 	-1
@@ -916,6 +917,26 @@ salir:				;inicia etiqueta salir
 		call DIBUJA_PIEZA
 		ret
 	endp
+	DIBUJA_CUADRO_G1 proc
+		mov [pieza_color],cAmarillo
+		mov al,[ren_aux]
+		mov ah,[col_aux]
+		inc al
+		inc ah
+		mov [si],al
+		mov [di],ah
+		inc al
+		mov [si+1],al
+		mov [di+1],ah
+		inc ah
+		mov [si+2],al
+		mov [di+2],ah
+		dec al
+		mov [si+3],al
+		mov [di+3],ah
+		call DIBUJA_PIEZA
+		ret
+	endp
 
 	;Procedimiento para dibujar una pieza de línea
 	DIBUJA_LINEA proc
@@ -1376,7 +1397,7 @@ salir:				;inicia etiqueta salir
 	call checa_localidadesV
 	cmp tope_inferior,1
 	je no_dibuja
-	
+
 	;Tope con figura
 	mov caracter_a_evaluar,0FEh
 	call checa_localidadesV
@@ -1513,6 +1534,8 @@ salir:				;inicia etiqueta salir
 		mov [pieza_ren],ah
 		cmp [pieza_actual],cuadro
 		je inicia_actual_cuadro
+		cmp [pieza_actual],cuadro_g1
+		je inicia_actual_cuadro_g1
 
 		cmp [pieza_actual],linea
 		je inicia_actual_linea
@@ -1558,6 +1581,10 @@ salir:				;inicia etiqueta salir
 
 
 	inicia_actual_cuadro:
+		mov [actual_color],cAmarillo
+		call DIBUJA_CUADRO
+		jmp salir_inicia_actual
+	inicia_actual_cuadro_g1:
 		mov [actual_color],cAmarillo
 		call DIBUJA_CUADRO
 		jmp salir_inicia_actual
@@ -1660,6 +1687,9 @@ salir:				;inicia etiqueta salir
 		mov [pieza_ren],ah
 		cmp [pieza_actual],cuadro
 		je borra_actual_cuadro
+		cmp [pieza_actual],cuadro_g1
+		je borra_actual_cuadro
+
 
 		cmp [pieza_actual],linea
 		je borra_actual_linea
@@ -2241,7 +2271,8 @@ salir:				;inicia etiqueta salir
 		
 	;Se realiza la multiplicación por matriz para rotar
 	GIRO_DER proc
-		
+		cmp [pieza_actual],cuadro
+		je giro_cuadro
 		cmp [pieza_actual],linea
 		je giro_linea
 		cmp [pieza_actual],linea_g1
@@ -2279,6 +2310,9 @@ salir:				;inicia etiqueta salir
 		cmp [pieza_actual],sinv_g1
 		je giro_Z2
 
+		giro_cuadro:
+			mov [pieza_actual],cuadro
+			jmp salida_giro
 		giro_linea:
 			mov [pieza_actual],linea_g1
 			jmp salida_giro
@@ -2339,7 +2373,8 @@ salir:				;inicia etiqueta salir
 	endp
 
 	GIRO_IZQ proc
-		
+		cmp [pieza_actual],cuadro
+		je giroI_cuadro
 		cmp [pieza_actual],linea
 		je giroI_linea
 		cmp [pieza_actual],linea_g1
@@ -2377,6 +2412,9 @@ salir:				;inicia etiqueta salir
 		cmp [pieza_actual],sinv_g1
 		je giroI_Z2
 
+		giroI_cuadro:
+			mov [pieza_actual],cuadro
+			jmp salida_giroI
 		giroI_linea:
 			mov [pieza_actual],linea_g1
 			jmp salida_giroI
