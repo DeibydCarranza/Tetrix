@@ -1376,14 +1376,13 @@ salir:				;inicia etiqueta salir
 	call checa_localidadesV
 	cmp tope_inferior,1
 	je no_dibuja
-<<<<<<< HEAD
-=======
+	
 	;Tope con figura
 	mov caracter_a_evaluar,0FEh
 	call checa_localidadesV
 	cmp tope_inferior,1
 	je no_dibuja
->>>>>>> 30b7322 (Colisiones entre piezas)
+
 	;Marcos laterlas 
 	mov aux1,0
 	mov aux2,28
