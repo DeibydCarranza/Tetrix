@@ -223,6 +223,7 @@ estado_localidad 		db  	0
 tope_inferior 		db 		0
 datote		dw   0
 milisegundos dw 	0
+level 		dw 	0
 ;////////////////////////////////////////////////////
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -740,7 +741,7 @@ salir:				;inicia etiqueta salir
 	IMPRIME_LEVEL proc
 		mov [ren_aux],level_ren
 		mov [col_aux],level_col+20
-		mov bx,[lines_score]
+		mov bx,[level]
 		call IMPRIME_BX
 		ret
 	endp
@@ -763,7 +764,29 @@ salir:				;inicia etiqueta salir
 		imprime_cadena_color blank,5,cBlanco,bgNegro 	;imprime cadena blank (espacios) para "borrar" lo que está en pantalla
 		ret
 	endp
-
+	
+	get_level_with_lines proc
+		cmp lines_score,5
+		ja level2
+		mov level,1
+		jmp salir_get
+		level2:
+		cmp lines_score,10
+		ja level3
+		mov level,2
+		jmp salir_get
+		level3:
+		cmp lines_score,15
+		ja level4
+		mov level,3
+		jmp salir_get
+		level4:
+		cmp lines_score,20
+		mov level,5
+		salir_get:
+		ret
+	endp
+	
 	;Imprime el valor del registro BX como entero sin signo (positivo)
 	;Se imprime con 5 dígitos (incluyendo ceros a la izquierda)
 	;Se usan divisiones entre 10 para obtener dígito por dígito en un LOOP 5 veces (una por cada dígito)
@@ -843,12 +866,9 @@ salir:				;inicia etiqueta salir
 
 	;Inicializa variables del juego
 	DATOS_INICIALES proc
-		mov [lines_score],0
-		mov [pieza_rens],ini_renglon
-		mov [pieza_cols],ini_columna
-		mov [pieza_ren],ini_renglon
-		mov [pieza_col],ini_columna
-		;agregar otras variables necesarias
+		mov [lines_score],25
+		mov [hiscore],0
+		call get_level_with_lines
 		ret
 	endp
 
