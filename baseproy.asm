@@ -513,6 +513,10 @@ salir:				;inicia etiqueta salir
 		jbe boton_stop5
 		jmp salida_lect_mouse
 	boton_stop5:
+		mov aux1,0
+		mov despla_vert,0
+		mov despla_hor,0
+		call BORRA_NEXT
 		jmp inicio_juego
 
 	;Lógica para calcular la posición del botón PAUSE dentro de los límites como variables
@@ -1418,7 +1422,7 @@ salir:				;inicia etiqueta salir
 		mov [despla_vert],0
 		call BORRA_NEXT
 		call DIBUJA_NEXT
-		call DIBUJA_ACTUAL
+		inicio_crono
 		ret 
 	endp
 	;DIBUJA_ACTUAL - se usa para imprimir la pieza actual en pantalla
@@ -2393,10 +2397,11 @@ salir:				;inicia etiqueta salir
 				
 				cmp despla_vert,19d
 				jbe mov_vert2
+				call ACTUALIZA_FIGURA
 				jmp salida_crono
 			mov_vert2:
 					mov dl,[segundos]
-					mov despla_vert,dl	
+					mov despla_vert,dl
 		xor dx,dx
 		salida_crono:
 		ret
