@@ -798,39 +798,30 @@ salir:				;inicia etiqueta salir
 		inicio_crono
 
 			loopstart:
-
+				
+				
 				no_borra:
 				call USO_MOUSE
 				
 				;loop que contiene las funcionalidades principales del movimiento
 			    call Desplazamiento_horizontal		;se habilitan los movimientos horizontales
-			    
+
 			    push cx
 			    	call crono 					;Llamada al uso de los ticks
 			    pop cx
-				jmp ciclo_normal
-				
-				nuevo_ciclo:
-				mov tope_inferior,0
-				call ACTUALIZA_FIGURA	
 
-				ciclo_normal:
-			    push cx
-			    	call DIBUJA_ACTUAL				
-			    pop cx
-
+				push cx
+					call DIBUJA_ACTUAL				
+				pop cx
+ 
 				;Para cuando colisiona con los bordes laterales
 				cmp estado_localidad,1
 				je no_borra
-
-				;Colisión con el fondo
-				cmp tope_inferior,1
-				je nuevo_ciclo
-
+			
 			    push cx
 			    	call BORRA_PIEZA_ACTUAL		;borra la pieza anterior a la actual
 			    pop cx
-			    
+
 			    jmp loopstart
  		pop dx
  		pop bx
@@ -1321,6 +1312,7 @@ salir:				;inicia etiqueta salir
 		push di
 	chequeo_colicion:
 		mov estado_localidad,0
+		mov tope_inferior,0
 		posiciona_cursor [si],[di]
 		leer_cursor_posicion				;al = caracter
 		call closion
@@ -1343,6 +1335,8 @@ salir:				;inicia etiqueta salir
 	;Colisión 
 	;Marcos laterlas 
 	mov caracter_a_evaluar,0BAh
+	mov aux1,0
+	mov aux2,28
 	call checa_localidades
 	cmp estado_localidad,1
 	je no_dibuja
@@ -1352,6 +1346,7 @@ salir:				;inicia etiqueta salir
 	cmp estado_localidad,1
 	je no_dibuja
 	;Tope inferior
+	mov aux2,22
 	mov caracter_a_evaluar,0CDh
 	call checa_localidades
 	cmp estado_localidad,1
@@ -2408,10 +2403,11 @@ salir:				;inicia etiqueta salir
 		div [sesenta]
 	
 		
-	flujo_tiempo:
-			mov [segundos],ah
-			mov dl,[segundos]
-			mov despla_vert,dl
+		flujo_tiempo:
+			; mov [segundos],ah
+			; mov dl,[segundos]
+			; mov despla_vert,dl
+		inc despla_vert
 		xor dx,dx
 		salida_crono:
 
@@ -2512,10 +2508,13 @@ salir:				;inicia etiqueta salir
 		positivo:
 			mov estado,1				;indicador para marcar que si es un caracter del marco
 			;Para cuando nos acercamos mucho al marco izquierdo
-			cmp dl,0				
+			;Horizontal : 0
+			cmp dl,aux1				
 			jbe Dnegativo
 			;Para cuando nos acercamos mucho al marco derecho
-			cmp dl,28
+			;Horizontal : 28
+			;Vetical : 22
+			cmp dl,aux2
 			jae	Dpositivo
 			Dnegativo:
 			inc despla_hor
