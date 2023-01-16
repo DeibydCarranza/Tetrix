@@ -516,7 +516,6 @@ salir:				;inicia etiqueta salir
 		mov aux1,0
 		mov despla_vert,0
 		mov despla_hor,0
-		;call BORRA_NEXT
 		jmp inicio_juego
 
 	;Lógica para calcular la posición del botón PAUSE dentro de los límites como variables
