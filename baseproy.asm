@@ -155,8 +155,6 @@ pieza_ren		db 		ini_renglon
 ;El arreglo cols guarda las columnas, y rens los renglones
 pieza_cols 		db 		0,0,0,0
 pieza_rens 		db 		0,0,0,0
-;Para ver el estado del recuadro donde se ubica el cursor a la hora de dibujas
-estado_localidad 		db  	0
 ;Valor de la pieza actual correspondiente a las constantes Piezas
 pieza_actual 	db 		linvertida
 ;Color de la pieza actual, correspondiente a los colores del carácter
@@ -219,7 +217,10 @@ no_mouse		db 		'No se encuentra driver de mouse. Presione [enter] para salir$'
 ;Indicador entre las funciones colisión y chequo_colicion
 estado			db 		0
 caracter_a_evaluar 	db 		0
+;Para ver el estado del recuadro donde se ubica el cursor a la hora de dibujas
+estado_localidad 		db  	0
 tope_inferior 		db 		0
+datote		dw   0
 ;////////////////////////////////////////////////////
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -785,7 +786,7 @@ salir:				;inicia etiqueta salir
 		loop imprime_digito
 		ret
 	endp
-
+	monstruo:
 	IMPRIME_DATOS_INICIALES proc
 		call DATOS_INICIALES 		;inicializa variables de juego
 		call IMPRIME_SCORES
@@ -800,7 +801,6 @@ salir:				;inicia etiqueta salir
 			loopstart:
 				
 				
-				no_borra:
 				call USO_MOUSE
 				
 				;loop que contiene las funcionalidades principales del movimiento
@@ -809,19 +809,21 @@ salir:				;inicia etiqueta salir
 			    push cx
 			    	call crono 					;Llamada al uso de los ticks
 			    pop cx
-
+				
 				push cx
 					call DIBUJA_ACTUAL				
 				pop cx
  
 				;Para cuando colisiona con los bordes laterales
-				cmp estado_localidad,1
+				cmp tope_inferior,1
 				je no_borra
-			
+
 			    push cx
 			    	call BORRA_PIEZA_ACTUAL		;borra la pieza anterior a la actual
-			    pop cx
-
+				pop cx
+				jmp loopstart
+				no_borra:
+				call ACTUALIZA_FIGURA
 			    jmp loopstart
  		pop dx
  		pop bx
@@ -1330,13 +1332,43 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	checa_localidadesV proc
+		mov cx,4
+		push si
+		push di
+	chequeo_colicionV:
+		mov tope_inferior,0
+		posiciona_cursor [si],[di]
+		leer_cursor_posicion				;al = caracter
+		call closionV
+		cmp estado,1
+		je marca_ocupadoV
+		inc di
+		inc si
+		loop chequeo_colicionV
+
+		jmp salir_chequeoV
+		marca_ocupadoV:
+		mov tope_inferior,1 			;ocuopado
+		salir_chequeoV:
+		pop di
+		pop si
+		ret
+	endp
+
 	DIBUJA_PIEZA proc
 	;================
 	;Colisión 
 	;Marcos laterlas 
-	mov caracter_a_evaluar,0BAh
+	mov aux2,20
+	mov caracter_a_evaluar,0CDh
+	call checa_localidadesV
+	cmp tope_inferior,1
+	je no_dibuja
+	;Tope inferior
 	mov aux1,0
 	mov aux2,28
+	mov caracter_a_evaluar,0BAh
 	call checa_localidades
 	cmp estado_localidad,1
 	je no_dibuja
@@ -1345,19 +1377,11 @@ salir:				;inicia etiqueta salir
 	call checa_localidades
 	cmp estado_localidad,1
 	je no_dibuja
-	;Tope inferior
-	mov aux2,22
-	mov caracter_a_evaluar,0CDh
-	call checa_localidades
-	cmp estado_localidad,1
-	je manda_señal
-	jmp hora_dibujar
-	manda_señal:
-	mov estado_localidad,0
-	mov tope_inferior,1
-	jmp no_dibuja
+
+	
+
+	dibuja:
 	;================
-	hora_dibujar:
 		mov cx,4
 	loop_dibuja_pieza:
 		push cx
@@ -1605,6 +1629,8 @@ salir:				;inicia etiqueta salir
 		lea si,[pieza_rens]
 		mov al,ini_columna
 		mov ah,ini_renglon
+		cmp despla_vert,20d
+		je salir_borra_actual
 		add al, [despla_hor]
 		add ah, [despla_vert]
 		mov [col_aux],al
@@ -2404,10 +2430,10 @@ salir:				;inicia etiqueta salir
 	
 		
 		flujo_tiempo:
-			; mov [segundos],ah
-			; mov dl,[segundos]
-			; mov despla_vert,dl
-		inc despla_vert
+			mov [segundos],ah
+			mov dl,[segundos]
+			mov despla_vert,dl
+		;inc despla_vert
 		xor dx,dx
 		salida_crono:
 
@@ -2527,6 +2553,27 @@ salir:				;inicia etiqueta salir
 		avisa:
 		ret
 	endp
+
+	closionV proc
+		cmp al,[caracter_a_evaluar]			;al = '║' ?
+		je positivoV
+		jmp negativoV
+		positivoV:
+			mov estado,1				;indicador para marcar que si es un caracter del marco
+			cmp dh,aux2
+			jae	DpositivoV
+			DpositivoV:
+			dec despla_vert
+			dec despla_vert
+			jmp avisaV					;Para evitar errores de casos excepcionales
+		negativoV:
+		mov estado,0
+		avisaV:
+		ret
+	endp
+
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;FIN PROCEDIMIENTOS;;;;;;
