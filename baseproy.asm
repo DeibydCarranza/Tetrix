@@ -219,7 +219,7 @@ no_mouse		db 		'No se encuentra driver de mouse. Presione [enter] para salir$'
 ;Indicador entre las funciones colisión y chequo_colicion
 estado			db 		0
 caracter_a_evaluar 	db 		0
-
+tope_inferior 		db 		0
 ;////////////////////////////////////////////////////
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -516,7 +516,6 @@ salir:				;inicia etiqueta salir
 		mov aux1,0
 		mov despla_vert,0
 		mov despla_hor,0
-		call ACTUALIZA_FIGURA
 		jmp inicio_juego
 
 	;Lógica para calcular la posición del botón PAUSE dentro de los límites como variables
@@ -796,27 +795,39 @@ salir:				;inicia etiqueta salir
 			
 		inicio_crono
 
-			loopstart:						;loop que contiene las funcionalidades principales del movimiento
-				no_borres:
+			loopstart:
+
+				no_borra:
 				call USO_MOUSE
 				
-				
+				;loop que contiene las funcionalidades principales del movimiento
 			    call Desplazamiento_horizontal		;se habilitan los movimientos horizontales
 			    
 			    push cx
 			    	call crono 					;Llamada al uso de los ticks
 			    pop cx
+				jmp ciclo_normal
+				
+				nuevo_ciclo:
+				mov tope_inferior,0
+				call ACTUALIZA_FIGURA	
+
+				ciclo_normal:
 			    push cx
 			    	call DIBUJA_ACTUAL				
 			    pop cx
+
 				;Para cuando colisiona con los bordes laterales
 				cmp estado_localidad,1
-				je no_borres
-			    	;call GIROS
+				je no_borra
+
+				;Colisión con el fondo
+				cmp tope_inferior,1
+				je nuevo_ciclo
+
 			    push cx
 			    	call BORRA_PIEZA_ACTUAL		;borra la pieza anterior a la actual
 			    pop cx
-			    
 			    
 			    jmp loopstart
  		pop dx
@@ -1310,7 +1321,6 @@ salir:				;inicia etiqueta salir
 		mov estado_localidad,0
 		posiciona_cursor [si],[di]
 		leer_cursor_posicion				;al = caracter
-		mov caracter_a_evaluar,0BAh
 		call closion
 		cmp estado,1
 		je marca_ocupado
@@ -1327,9 +1337,30 @@ salir:				;inicia etiqueta salir
 	endp
 
 	DIBUJA_PIEZA proc
+	;================
+	;Colisión 
+	;Marcos laterlas 
+	mov caracter_a_evaluar,0BAh
 	call checa_localidades
 	cmp estado_localidad,1
 	je no_dibuja
+	;Intersecciones internas
+	mov caracter_a_evaluar,0CCh
+	call checa_localidades
+	cmp estado_localidad,1
+	je no_dibuja
+	;Tope inferior
+	mov caracter_a_evaluar,0CDh
+	call checa_localidades
+	cmp estado_localidad,1
+	je manda_señal
+	jmp hora_dibujar
+	manda_señal:
+	mov estado_localidad,0
+	mov tope_inferior,1
+	jmp no_dibuja
+	;================
+	hora_dibujar:
 		mov cx,4
 	loop_dibuja_pieza:
 		push cx
@@ -2394,14 +2425,8 @@ salir:				;inicia etiqueta salir
 
 		flujo_normal:
 			mov [segundos],ah
-				
-				cmp despla_vert,19d
-				jbe mov_vert2
-				call ACTUALIZA_FIGURA
-				jmp salida_crono
-			mov_vert2:
-					mov dl,[segundos]
-					mov despla_vert,dl
+			mov dl,[segundos]
+			mov despla_vert,dl
 		xor dx,dx
 		salida_crono:
 		ret
