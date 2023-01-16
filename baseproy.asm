@@ -534,7 +534,8 @@ salir:				;inicia etiqueta salir
 		jbe boton_pause5
 		jmp salida_lect_mouse
 	boton_pause5:
-		jmp inicio_juego	
+		mov [status],1d
+		jmp salida_lect_mouse
 
 	;Lógica para calcular la posición del botón PLAY dentro de los límites como variables
 	;Funciona para un renglón
@@ -555,7 +556,8 @@ salir:				;inicia etiqueta salir
 		jbe boton_play5
 		jmp salida_lect_mouse
 	boton_play5:
-		jmp inicio_juego
+		mov [status],2d
+		jmp salida_lect_mouse
 	salida_lect_mouse:
 		pop dx 
 		pop cx
@@ -1409,6 +1411,16 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
+	ACTUALIZA_FIGURA proc 
+		mov al,[pieza_aux]
+		mov [pieza_actual],al 
+		mov [despla_hor],0
+		mov [despla_vert],0
+		call BORRA_NEXT
+		call DIBUJA_NEXT
+		call DIBUJA_ACTUAL
+		ret 
+	endp
 	;DIBUJA_ACTUAL - se usa para imprimir la pieza actual en pantalla
 	;Primero se debe calcular qué pieza se va a dibujar
 	;Dentro del procedimiento se utilizan variables referentes a la pieza actual
@@ -2082,8 +2094,49 @@ salir:				;inicia etiqueta salir
 	endp
 
 	BORRA_NEXT proc
-		;implementar
-		ret
+		lea di,[next_cols]
+		lea si,[next_rens]
+		mov [col_aux],next_col+10
+		mov [ren_aux],next_ren-1
+
+		cmp [pieza_next],cuadro	
+		je bnext_cuadro			;En caso de ser dl <= 14, dibuja cuadro
+		cmp [pieza_next],linea
+		je bnext_linea 			;En caso de ser 14 < dl <= 28, dibuja linea
+		cmp [pieza_next],linvertida
+		je bnext_l_invertida	;En caso de ser 28 < dl <= 42, dibuja l invertida
+		cmp [pieza_next],lnormal
+		je bnext_l 				;En caso de ser 42 < dl <= 56, dibuja l
+		cmp [pieza_next],snormal
+		je bnext_s 				;En caso de ser 56 < dl <= 70, dibuja s
+		cmp [pieza_next],sinvertida
+		je bnext_s_invertida 	;En caso de ser 70 < dl <= 84, dibuja s invertida
+		cmp [pieza_next],tnormal
+		je bnext_t 				;En caso de ser 84 < dl <= 99, dibuja T
+
+		bnext_cuadro:
+			call BORRA_CUADRO
+			jmp salir_borra_next
+		bnext_linea:
+			call BORRA_LINEA
+			jmp salir_borra_next
+		bnext_l:
+			call BORRA_L
+			jmp salir_borra_next
+		bnext_l_invertida:
+			call BORRA_L_INVERTIDA
+			jmp salir_borra_next
+		bnext_t:
+			call BORRA_T
+			jmp salir_borra_next
+		bnext_s:
+			call BORRA_S
+			jmp salir_borra_next
+		bnext_s_invertida:
+			call BORRA_S_INVERTIDA
+			jmp salir_borra_next
+		salir_borra_next:
+			ret
 	endp
 
 	BORRA_PIEZA proc
