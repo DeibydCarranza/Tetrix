@@ -516,7 +516,7 @@ salir:				;inicia etiqueta salir
 		mov aux1,0
 		mov despla_vert,0
 		mov despla_hor,0
-		call BORRA_NEXT
+		call ACTUALIZA_FIGURA
 		jmp inicio_juego
 
 	;Lógica para calcular la posición del botón PAUSE dentro de los límites como variables
@@ -1416,7 +1416,7 @@ salir:				;inicia etiqueta salir
 	endp
 
 	ACTUALIZA_FIGURA proc 
-		mov al,[pieza_aux]
+		mov al,[pieza_next]
 		mov [pieza_actual],al 
 		mov [despla_hor],0
 		mov [despla_vert],0
