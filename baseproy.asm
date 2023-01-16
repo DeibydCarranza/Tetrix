@@ -221,6 +221,7 @@ caracter_a_evaluar 	db 		0
 estado_localidad 		db  	0
 tope_inferior 		db 		0
 datote		dw   0
+milisegundos dw 	0
 ;////////////////////////////////////////////////////
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -518,7 +519,7 @@ salir:				;inicia etiqueta salir
 		mov despla_vert,0
 		mov despla_hor,0
 		call ACTUALIZA_FIGURA
-		jmp inicio_juego
+		jmp inicio
 
 	;Lógica para calcular la posición del botón PAUSE dentro de los límites como variables
 	;Funciona para un renglón
@@ -1317,24 +1318,24 @@ salir:				;inicia etiqueta salir
 		mov cx,4
 		push si
 		push di
-	chequeo_colicion:
-		mov estado_localidad,0
-		mov tope_inferior,0
-		posiciona_cursor [si],[di]
-		leer_cursor_posicion				;al = caracter
-		call closion
-		cmp estado,1
-		je marca_ocupado
-		inc di
-		inc si
-		loop chequeo_colicion
-		jmp salir_chequeo
-		marca_ocupado:
-		mov estado_localidad,1 			;ocuopado
-		salir_chequeo:
-		pop di
-		pop si
-		ret
+		chequeo_colicion:
+			mov estado_localidad,0
+			mov tope_inferior,0
+			posiciona_cursor [si],[di]
+			leer_cursor_posicion				;al = caracter
+			call closion
+			cmp estado,1
+			je marca_ocupado
+			inc di
+			inc si
+			loop chequeo_colicion
+			jmp salir_chequeo
+			marca_ocupado:
+			mov estado_localidad,1 			;ocuopado
+			salir_chequeo:
+			pop di
+			pop si
+			ret
 	endp
 
 	checa_localidadesV proc
@@ -1375,6 +1376,14 @@ salir:				;inicia etiqueta salir
 	call checa_localidadesV
 	cmp tope_inferior,1
 	je no_dibuja
+<<<<<<< HEAD
+=======
+	;Tope con figura
+	mov caracter_a_evaluar,0FEh
+	call checa_localidadesV
+	cmp tope_inferior,1
+	je no_dibuja
+>>>>>>> 30b7322 (Colisiones entre piezas)
 	;Marcos laterlas 
 	mov aux1,0
 	mov aux2,28
@@ -1413,16 +1422,17 @@ salir:				;inicia etiqueta salir
 	;Primero se debe calcular qué pieza se va a dibujar
 	;Dentro del procedimiento se utilizan variables referentes a la pieza siguiente
 	DIBUJA_NEXT proc
+		push cx
 		lea di,[next_cols]
 		lea si,[next_rens]
 		mov [col_aux],next_col+10
 		mov [ren_aux],next_ren-1
 		
 		;Genera números aleatorios entre 0-99
-		mov ah,2Ch		;Devuelve la hora del sistema
-		int 21h
 		;La interrupción devuelve centesimas en el registro DL (0-99)
-		mov pieza_aux,dl 		;Se mueve el valor obtenido, para ser comparado
+		
+		mov cx,milisegundos
+		mov pieza_aux,cl		;Se mueve el valor obtenido, para ser comparado
 
 		cmp pieza_aux,14		
 		jbe next_cuadro			;En caso de ser dl <= 14, dibuja cuadro
@@ -1474,6 +1484,7 @@ salir:				;inicia etiqueta salir
 		mov [next_color],cRojoClaro
 		call DIBUJA_S_INVERTIDA
 	salir_dibuja_next:
+	pop cx
 		ret
 	endp
 
@@ -2437,6 +2448,7 @@ salir:				;inicia etiqueta salir
 
 		mul [tick_ms]
 		div [mil]
+		mov[milisegundos],dx
 		div [sesenta]
 	
 		
