@@ -155,6 +155,8 @@ pieza_ren		db 		ini_renglon
 ;El arreglo cols guarda las columnas, y rens los renglones
 pieza_cols 		db 		0,0,0,0
 pieza_rens 		db 		0,0,0,0
+;Para ver el estado del recuadro donde se ubica el cursor a la hora de dibujas
+estado_localidad 		db  	0
 ;Valor de la pieza actual correspondiente a las constantes Piezas
 pieza_actual 	db 		linvertida
 ;Color de la pieza actual, correspondiente a los colores del carácter
@@ -195,13 +197,12 @@ mil				dw		1000 	;dato de valor decimal 1000 para operación DIV entre 1000
 diez 			dw 		10
 cien 			db 		100 	;dato de valor decimal 100 para operación DIV entre 100
 sesenta 		db 		60		;dato de valor decimal 60 para operación DIV entre 60
-treinta 		db 		70
 contador 		dw		0		;variable contador
 segundos 		db 		0 		;Variable para ver los segundos
 delay_def		db 		1 		;Cada segundo se muestra la siguiente pieza
 delay_fin		db 		0 		;Para comparar el delay inicial (por si es igual)
 
-status 			db 		0 		;Status de juegos: 0 stop, 1 pause, 2 play
+status 			db 		0 		;Status de juegos: 0 stop, 1 active, 2 pause
 conta 			db 		0 		;Contador auxiliar para algunas operaciones
 
 ;Variables que sirven de parámetros de entrada para el procedimiento IMPRIME_BOTON
@@ -215,7 +216,9 @@ boton_color		db 		0
 ocho			db 		8
 ;Cuando el driver del mouse no está disponible
 no_mouse		db 		'No se encuentra driver de mouse. Presione [enter] para salir$'
-
+;Indicador entre las funciones colisión y chequo_colicion
+estado			db 		0
+caracter_a_evaluar 	db 		0
 
 ;////////////////////////////////////////////////////
 
@@ -237,7 +240,13 @@ posiciona_cursor macro renglon,columna
 	mov bx,0
 	mov ax,0200h 	;preparar ax para interrupcion, opcion 02h
 	int 10h 		;interrupcion 10h y opcion 02h. Cambia posicion del cursor
-endm 
+endm
+
+leer_cursor_posicion macro
+	mov ah,08h
+	mov bx,0
+	int 10h
+endm
 
 ;inicializa_ds_es - Inicializa el valor del registro DS y ES
 inicializa_ds_es 	macro
@@ -363,6 +372,12 @@ delimita_mouse_h 	macro minimo,maximo
 	mov dx,maximo  	;establece el valor máximo horizontal en CX
 	mov ax,7		;opcion 7
 	int 33h			;llama interrupcion 33h para manejo del mouse
+endm
+
+inicio_crono macro
+	mov ah,00h 				;Tomando un tiempo inicial de referencia
+	int 1Ah
+	mov [t_inicial],dx
 endm
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;Fin Macros;;;;;;;
@@ -519,8 +534,7 @@ salir:				;inicia etiqueta salir
 		jbe boton_pause5
 		jmp salida_lect_mouse
 	boton_pause5:
-		mov [status],1d
-		jmp salida_lect_mouse	
+		jmp inicio_juego	
 
 	;Lógica para calcular la posición del botón PLAY dentro de los límites como variables
 	;Funciona para un renglón
@@ -541,8 +555,7 @@ salir:				;inicia etiqueta salir
 		jbe boton_play5
 		jmp salida_lect_mouse
 	boton_play5:
-		mov [status],2d
-		jmp salida_lect_mouse
+		jmp inicio_juego
 	salida_lect_mouse:
 		pop dx 
 		pop cx
@@ -775,12 +788,10 @@ salir:				;inicia etiqueta salir
 		push bx
 		push dx 
 			
-			mov ah,00h 				;Tomando un tiempo inicial de referencia
-			int 1Ah
-			mov [t_inicial],dx
-			mov [t_inicial+2],cx
+		inicio_crono
 
 			loopstart:						;loop que contiene las funcionalidades principales del movimiento
+				no_borres:
 				call USO_MOUSE
 				
 				
@@ -792,6 +803,9 @@ salir:				;inicia etiqueta salir
 			    push cx
 			    	call DIBUJA_ACTUAL				
 			    pop cx
+				;Para cuando colisiona con los bordes laterales
+				cmp estado_localidad,1
+				je no_borres
 			    	;call GIROS
 			    push cx
 			    	call BORRA_PIEZA_ACTUAL		;borra la pieza anterior a la actual
@@ -1282,7 +1296,34 @@ salir:				;inicia etiqueta salir
 	;Como parámetros recibe:
 	;si - apuntador al arreglo de renglones
 	;di - apuntador al arreglo de columnas
+	checa_localidades proc
+		mov cx,4
+		push si
+		push di
+	chequeo_colicion:
+		mov estado_localidad,0
+		posiciona_cursor [si],[di]
+		leer_cursor_posicion				;al = caracter
+		mov caracter_a_evaluar,0BAh
+		call closion
+		cmp estado,1
+		je marca_ocupado
+		inc di
+		inc si
+		loop chequeo_colicion
+		jmp salir_chequeo
+		marca_ocupado:
+		mov estado_localidad,1 			;ocuopado
+		salir_chequeo:
+		pop di
+		pop si
+		ret
+	endp
+
 	DIBUJA_PIEZA proc
+	call checa_localidades
+	cmp estado_localidad,1
+	je no_dibuja
 		mov cx,4
 	loop_dibuja_pieza:
 		push cx
@@ -1296,6 +1337,7 @@ salir:				;inicia etiqueta salir
 		inc di
 		inc si
 		loop loop_dibuja_pieza
+		no_dibuja:
 		ret
 	endp
 
@@ -1367,16 +1409,6 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
-	ACTUALIZA_FIGURA proc 
-		mov al,[pieza_aux]
-		mov [pieza_actual],al 
-		mov [despla_hor],0
-		mov [despla_vert],0
-		call BORRA_NEXT
-		call DIBUJA_NEXT
-		call DIBUJA_ACTUAL
-		ret 
-	endp
 	;DIBUJA_ACTUAL - se usa para imprimir la pieza actual en pantalla
 	;Primero se debe calcular qué pieza se va a dibujar
 	;Dentro del procedimiento se utilizan variables referentes a la pieza actual
@@ -2050,48 +2082,7 @@ salir:				;inicia etiqueta salir
 	endp
 
 	BORRA_NEXT proc
-		lea di,[next_cols]
-		lea si,[next_rens]
-		mov [col_aux],next_col+10
-		mov [ren_aux],next_ren-1
-
-		cmp [pieza_aux],cuadro	
-		jbe bnext_cuadro			;En caso de ser dl <= 14, dibuja cuadro
-		cmp [pieza_aux],linea
-		jbe bnext_linea 			;En caso de ser 14 < dl <= 28, dibuja linea
-		cmp [pieza_aux],linvertida
-		jbe bnext_l_invertida	;En caso de ser 28 < dl <= 42, dibuja l invertida
-		cmp [pieza_aux],lnormal
-		jbe bnext_l 				;En caso de ser 42 < dl <= 56, dibuja l
-		cmp [pieza_aux],snormal
-		jbe bnext_s 				;En caso de ser 56 < dl <= 70, dibuja s
-		cmp [pieza_aux],sinvertida
-		jbe bnext_s_invertida 	;En caso de ser 70 < dl <= 84, dibuja s invertida
-		cmp [pieza_aux],tnormal
-		jbe bnext_t 				;En caso de ser 84 < dl <= 99, dibuja T
-
-	bnext_cuadro:
-		call BORRA_CUADRO
-		jmp salir_borra_next
-	bnext_linea:
-		call BORRA_LINEA
-		jmp salir_borra_next
-	bnext_l:
-		call BORRA_L
-		jmp salir_borra_next
-	bnext_l_invertida:
-		call BORRA_L_INVERTIDA
-		jmp salir_borra_next
-	bnext_t:
-		call BORRA_T
-		jmp salir_borra_next
-	bnext_s:
-		call BORRA_S
-		jmp salir_borra_next
-	bnext_s_invertida:
-		call BORRA_S_INVERTIDA
-		jmp salir_borra_next
-	salir_borra_next:
+		;implementar
 		ret
 	endp
 
@@ -2311,32 +2302,51 @@ salir:				;inicia etiqueta salir
 		salida_giroI:
 			ret
 	endp
+	
 	crono proc
-		cmp status,2
-		jne salida_crono
+		cmp status,1
+		je intercambio_tiempo
+
 		mov ah,00h
 		int 1Ah
 		mov ax,[t_inicial]
-		mov bx,[t_inicial+2]
 		;Se hace la resta de los valores para obtener la diferencia
 		sub dx,ax  				;DX = DX - AX = t_final - t_inicial, DX guarda la parte baja del contador de ticks
-		;Si la diferencia está entre 0d y 65535d, significa que hay un máximo 3,604,425 milisegundos
 		mov ax,dx
 
 		mul [tick_ms]
 		div [mil]
 		div [sesenta]
 
+		mov [segundos],ah
+		jmp flujo_tiempo
+		
+		intercambio_tiempo:
+		
+			mov ah,[segundos]
+			mov [aux1],ah
+				jmp salida_crono
+				
+		flujo_tiempo:
+			cmp [aux1],0h
+			jz aux_es0
+			mov ah,[aux1]
+			jmp flujo_normal
+		aux_es0:
+			add ah,[aux1]
 
-		cmp despla_vert,19d
-		jbe mov_vert
-		jmp salida_crono
-		mov_vert:
-			mov despla_vert,ah			
+		flujo_normal:
+			mov [segundos],ah
+				
+				cmp despla_vert,19d
+				jbe mov_vert2
+				jmp salida_crono
+			mov_vert2:
+					mov dl,[segundos]
+					mov despla_vert,dl	
+		xor dx,dx
 		salida_crono:
-
 		ret
-
 	crono endp
 
 
@@ -2354,20 +2364,20 @@ salir:				;inicia etiqueta salir
 		cmp al,61h
 		je izquierda
 		jmp salir_hor					;Si se presiona otra tecla la ignoramos
-	incremento:
-		inc despla_hor
-		jmp salir_hor
-	decremento:
-		dec despla_hor
-		jmp salir_hor
-	derecha:
-		call GIRO_DER
-		jmp salir_hor
-	izquierda:
-		call GIRO_IZQ
-		jmp salir_hor
-	salir_hor:
-		ret 
+		incremento:
+			inc despla_hor
+			jmp salir_hor
+		decremento:
+			dec despla_hor
+			jmp salir_hor
+		derecha:
+			call GIRO_DER
+			jmp salir_hor
+		izquierda:
+			call GIRO_IZQ
+			jmp salir_hor
+		salir_hor:
+			ret 
 	endp
 
 	delay proc 
@@ -2425,6 +2435,31 @@ salir:				;inicia etiqueta salir
 	    pop ax
 	    ret
 	endp delay
+
+	closion proc
+		cmp al,[caracter_a_evaluar]			;al = '║' ?
+		je positivo
+		jmp negativo
+		positivo:
+			mov estado,1				;indicador para marcar que si es un caracter del marco
+			;Para cuando nos acercamos mucho al marco izquierdo
+			cmp dl,0				
+			jbe Dnegativo
+			;Para cuando nos acercamos mucho al marco derecho
+			cmp dl,28
+			jae	Dpositivo
+			Dnegativo:
+			inc despla_hor
+			jmp avisa
+			Dpositivo:
+			dec despla_hor
+			jmp avisa					;Para evitar errores de casos excepcionales
+		negativo:
+		mov estado,0
+		avisa:
+		ret
+	endp
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;FIN PROCEDIMIENTOS;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
