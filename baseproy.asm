@@ -217,12 +217,16 @@ ocho			db 		8
 no_mouse		db 		'No se encuentra driver de mouse. Presione [enter] para salir$'
 ;Indicador entre las funciones colisión y chequo_colicion
 estado			db 		0
-caracter_a_evaluar 	db 		0
+caracter_a_evaluar 	db 	0
 ;Para ver el estado del recuadro donde se ubica el cursor a la hora de dibujas
-estado_localidad 		db  	0
-tope_inferior 		db 		0
-datote		dw   0
-milisegundos dw 	0
+estado_localidad 	db  0
+tope_inferior 		db 	0
+datote		dw   		0
+milisegundos dw 		0
+level 		dw 			0
+;Para tener de referencia cuando llegamos a la cima y no es posible 
+;escribir más
+fin_juego	db 			0
 ;////////////////////////////////////////////////////
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -244,7 +248,8 @@ posiciona_cursor macro renglon,columna
 	mov ax,0200h 	;preparar ax para interrupcion, opcion 02h
 	int 10h 		;interrupcion 10h y opcion 02h. Cambia posicion del cursor
 endm
-
+;Mediante la opción 08h y la int 10h obtenemos el caracter (en al)
+;de donde esta posicionado el cursor
 leer_cursor_posicion macro
 	mov ah,08h
 	mov bx,0
@@ -740,7 +745,7 @@ salir:				;inicia etiqueta salir
 	IMPRIME_LEVEL proc
 		mov [ren_aux],level_ren
 		mov [col_aux],level_col+20
-		mov bx,[lines_score]
+		mov bx,[level]
 		call IMPRIME_BX
 		ret
 	endp
@@ -763,7 +768,29 @@ salir:				;inicia etiqueta salir
 		imprime_cadena_color blank,5,cBlanco,bgNegro 	;imprime cadena blank (espacios) para "borrar" lo que está en pantalla
 		ret
 	endp
-
+	
+	get_level_with_lines proc
+		cmp lines_score,5
+		ja level2
+		mov level,1
+		jmp salir_get
+		level2:
+		cmp lines_score,10
+		ja level3
+		mov level,2
+		jmp salir_get
+		level3:
+		cmp lines_score,15
+		ja level4
+		mov level,3
+		jmp salir_get
+		level4:
+		cmp lines_score,20
+		mov level,5
+		salir_get:
+		ret
+	endp
+	
 	;Imprime el valor del registro BX como entero sin signo (positivo)
 	;Se imprime con 5 dígitos (incluyendo ceros a la izquierda)
 	;Se usan divisiones entre 10 para obtener dígito por dígito en un LOOP 5 veces (una por cada dígito)
@@ -788,7 +815,7 @@ salir:				;inicia etiqueta salir
 		loop imprime_digito
 		ret
 	endp
-	monstruo:
+
 	IMPRIME_DATOS_INICIALES proc
 		call DATOS_INICIALES 		;inicializa variables de juego
 		call IMPRIME_SCORES
@@ -815,11 +842,14 @@ salir:				;inicia etiqueta salir
 				push cx
 					call DIBUJA_ACTUAL				
 				pop cx
- 
+				;Si llegamos a la cima, termina el juego.
+				cmp fin_juego,1
+				je salir
 				;Para cuando colisiona con los bordes laterales
 				cmp estado_localidad,1
 				je no_borra
-
+				;Para cuando colisiona con el borde inferior 
+				;ya sea marco o pieza
 				cmp tope_inferior,1
 				je actualiza_ciclo
 
@@ -827,11 +857,17 @@ salir:				;inicia etiqueta salir
 			    	call BORRA_PIEZA_ACTUAL		;borra la pieza anterior a la actual
 
 				pop cx
+				;Si no hay colisión vertical debemos seguir el flujo 
+				;donde no se actualiza fijura o nos evita movernos
 				jmp loopstart
-
+				;Si colisionamos verticalmente, actualizamos pieza
+				;yreiniciamos reloj para con ello el movimiento 
+				;vertical
 				actualiza_ciclo:
 				call ACTUALIZA_FIGURA
 			    jmp loopstart
+		game_over:
+
  		pop dx
  		pop bx
 		pop ax
@@ -844,11 +880,8 @@ salir:				;inicia etiqueta salir
 	;Inicializa variables del juego
 	DATOS_INICIALES proc
 		mov [lines_score],0
-		mov [pieza_rens],ini_renglon
-		mov [pieza_cols],ini_columna
-		mov [pieza_ren],ini_renglon
-		mov [pieza_col],ini_columna
-		;agregar otras variables necesarias
+		mov [hiscore],0
+		call get_level_with_lines
 		ret
 	endp
 
@@ -1331,10 +1364,12 @@ salir:				;inicia etiqueta salir
 		ret
 	endp
 
-	;DIBUJA_PIEZA - procedimiento para imprimir una pieza en pantalla
-	;Como parámetros recibe:
-	;si - apuntador al arreglo de renglones
-	;di - apuntador al arreglo de columnas
+	;Revisa los arreglos columna y renglon para posicionar el cursor allí
+	;y realizar comparaciones ocn simbolos que definen 
+	;si es posible o no dibujar la pieza allí.
+	;En caso de no poderse dibujar, se decrementa el desplazamiento horizontal
+	;y vuelve al ciclo principal (DIBUJA_DATOS_INICIALES) para repasar el proceso
+	;con un nuevo desplazamiento.
 	checa_localidades proc
 		mov cx,4
 		push si
@@ -1352,13 +1387,18 @@ salir:				;inicia etiqueta salir
 			loop chequeo_colicion
 			jmp salir_chequeo
 			marca_ocupado:
-			mov estado_localidad,1 			;ocuopado
+			mov estado_localidad,1 				;marca de ocuopado
 			salir_chequeo:
 			pop di
 			pop si
 			ret
 	endp
-
+	;Revisa los arreglos columna y renglon para posicionar el cursor allí
+	;y realizar comparaciones ocn simbolos que definen 
+	;si es posible o no dibujar la pieza allí.
+	;En caso de no poderse dibujar, se decrementa el desplazamiento vertical
+	;y vuelve al ciclo principal (DIBUJA_DATOS_INICIALES) para repasar el proceso
+	;con un nuevo desplazamiento.
 	checa_localidadesV proc
 		mov cx,4
 		push si
@@ -1376,50 +1416,67 @@ salir:				;inicia etiqueta salir
 
 		jmp salir_chequeoV
 		marca_ocupadoV:
-		mov tope_inferior,1 			;ocuopado
+		mov tope_inferior,1 				;marca de ocuopado
+		;Dado ciertos conflictos con un delay, la pieza al colicionar de 
+		;forma vertical tendía a borrar la pieza y seguir dejando la siguiente
+		;por lo que se dibuja la pieza en las localidades
+		;donde esta se borra por causa del delay.
+		;================
 		xor ax,ax
 		mov al,tope_inferior
 		push ax
+		;Ya no tiene problema dado que el movimiento vertical que ocasionaba que
+		;no se permitiera dibujar se decremento en una unidad.
 		call DIBUJA_ACTUAL
 		pop ax
+		;===============
 		mov tope_inferior,al
+		;Si topamos con un borde pero se trata del 
+		;borde superiror, es decir, desplazamiento vertical
+		;es 0
+		cmp despla_vert,0
+		jne salir_chequeoV
+		mov fin_juego,1
 		salir_chequeoV:
 		pop di
 		pop si
 		ret
 	endp
 
+	;Dado que para toda impresión siempre se manda llamar este procedimiento
+	;aqui se inserta la validación de si es o no posible desplazar la pieza es 
+	;decir, dibujar.
+	;Cuando se manda llamar este procedimiento, si e di son apuntadores 
+	;a los arreglos que gurdan tanto columnas y renglones de la 
+	;la pieza futura a dibujar.
 	DIBUJA_PIEZA proc
 	;================
 	;Colisión 
 	;Tope inferior
 	mov caracter_a_evaluar,0CDh
-	call checa_localidadesV
-	cmp tope_inferior,1
+	call checa_localidadesV				;escaneamos los arreglos	
+	cmp tope_inferior,1					;si es 1, no podemos dibujar
 	je no_dibuja
 
 	;Tope con figura
 	mov caracter_a_evaluar,0FEh
-	call checa_localidadesV
-	cmp tope_inferior,1
+	call checa_localidadesV				;escaneamos los arreglos
+	cmp tope_inferior,1					;si es 1, no podemos dibujar
 	je no_dibuja
 
 	;Marcos laterlas 
 	mov aux1,0
 	mov aux2,28
 	mov caracter_a_evaluar,0BAh
-	call checa_localidades
-	cmp estado_localidad,1
+	call checa_localidades				;escaneamos los arreglos
+	cmp estado_localidad,1				;si es 1, no podemos dibujar
 	je no_dibuja
-	;Intersecciones internas
+	;Intersecciones internas (laterales)
 	mov caracter_a_evaluar,0CCh
-	call checa_localidades
-	cmp estado_localidad,1
+	call checa_localidades				;escaneamos los arreglos
+	cmp estado_localidad,1				;si es 1, no podemos dibujar
 	je no_dibuja
 
-	
-
-	dibuja:
 	;================
 		mov cx,4
 	loop_dibuja_pieza:
@@ -2586,7 +2643,8 @@ salir:				;inicia etiqueta salir
 	    pop ax
 	    ret
 	endp delay
-
+	;Checando si el caracter de donde esta el cursor
+	;ya no nos permite avanzar hace los lados
 	closion proc
 		cmp al,[caracter_a_evaluar]			;al = '║' ?
 		je positivo
@@ -2613,9 +2671,10 @@ salir:				;inicia etiqueta salir
 		avisa:
 		ret
 	endp
-
+	;Checando si el caracter de donde esta el cursor
+	;ya no nos permite avanzar hace abajo
 	closionV proc
-		cmp al,[caracter_a_evaluar]			;al = '║' ?
+		cmp al,[caracter_a_evaluar]			;al = '═' o '■' ?
 		je positivoV
 		jmp negativoV
 		positivoV:
